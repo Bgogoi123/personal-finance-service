@@ -23,3 +23,7 @@ def get_roles_by_id(id: int, db = Depends(get_db)):
 @roles_routes.put("/update/{id}")
 def update_role_by_id(id: int, body: RolesCreateSchema, db = Depends(get_db)):
   return controller.update_role_by_id(id, body, db)
+
+@roles_routes.delete("/delete/{id}")
+def delete_role_by_id(id: int, db = Depends(get_db)):
+  return controller.delete_role_by_id(id, db)

@@ -35,7 +35,7 @@ def get_roles_by_id(id: int, db: Session):
     "status": 200, "data": role, "message": f"Role details for ID {id}."
   }
 
-def update_role_by_id(id: int, body: RolesCreateSchema, db: Session) -> RolesResponseSchema:
+def update_role_by_id(id: int, body: RolesCreateSchema, db: Session) -> RolesResponseSchema | HTTPException:
   data = body.model_dump()
   role = db.query(RolesModel).filter(RolesModel.id==id).first()
 
@@ -47,10 +47,26 @@ def update_role_by_id(id: int, body: RolesCreateSchema, db: Session) -> RolesRes
     db.commit()
     db.refresh(role)
   
-  return {
-    "status": 200, 
-    "data": RolesResponseSchema.model_validate(role),
-    "message": f"Role with ID {id} was updated successfully."
-  }
+    return {
+      "status": 200, 
+      "data": RolesResponseSchema.model_validate(role),
+      "message": f"Role with ID {id} was updated successfully."
+    }
+  
+  raise HTTPException(404, f"Role with ID {id} not found.")
 
 
+def delete_role_by_id(id: int, db: Session) -> RolesResponseSchema | HTTPException:
+  role = db.query(RolesModel).filter(RolesModel.id == id).first()
+
+  if(role):
+    db.delete(role)
+    db.commit()
+
+    return {
+      "status": 200,
+      "data": role,
+      "message": f"Role with ID {id} was deleted successfully."
+    }
+  
+  raise HTTPException(404, f"Role with ID {id} Not Found.")
