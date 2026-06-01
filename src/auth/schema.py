@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import datetime
 
@@ -19,3 +19,7 @@ class UserDataResponse(BaseModel):
   email: str
   phone_number: str
   updated_at: Optional[datetime] = None
+
+class LoginSchema(BaseModel):
+  identifier: str = Field(..., description="Can be username, email, or phone number")
+  password: str
