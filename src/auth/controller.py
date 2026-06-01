@@ -5,10 +5,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta, timezone
 import jwt
-from src.users.schema import CreateUserSchema, UserDataResponse, LoginSchema
-from src.users.models import UsersModel
+from src.auth.schema import CreateUserSchema, UserDataResponse, LoginSchema
+from src.auth.models import UsersModel
 from src.utils.auth.passwords import get_hashed_password, verify_password
 from src.utils.settings import settings
+from src.utils.auth.authentication import create_auth_tokens
 
 def user_registration(body: CreateUserSchema, session: Session) -> UserDataResponse | HTTPException:
 
@@ -48,7 +49,7 @@ def user_registration(body: CreateUserSchema, session: Session) -> UserDataRespo
       print("Error in creating user: ", e)
       raise HTTPException(500, "Something went wrong on the server, please try again later.")
 
-def user_login(body: LoginSchema, session: Session):
+def user_login(body: LoginSchema, session: Session,):
   identifier = body.identifier.strip()
 
   if "@" in identifier:
@@ -65,40 +66,53 @@ def user_login(body: LoginSchema, session: Session):
   if not verify_password(body.password, user.password):
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Password.")
   
-  # Create Access Token
-  access_token_expiry_time = datetime.now(timezone.utc) + timedelta(minutes = settings.ACCESS_TOKEN_EXPIRY_MINUTES)
-  access_token = jwt.encode({"_id": str(user.id), "username": user.username, "exp": access_token_expiry_time}, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+  tokens = create_auth_tokens(user.id, session)
+  return tokens
 
-  # Create Refresh Token
-  refresh_token_expiry_days = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRY_DAYS)
-  refresh_token = jwt.encode({"_id": str(user.id), "username": user.username, "exp": refresh_token_expiry_days }, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-
-  return { "access_token": access_token, "refresh_token": refresh_token }
-
-def is_authenticated(request: Request, session: Session):
-  auth_header = request.headers.get("authorization")
-  if not auth_header or auth_header.startswith("Beared "):
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You are not authorized! Missing or invalid token format.")
+def renew_access_token(refresh_token: str, session: Session):
+  try:
+    # Cryptographically verify the refresh token
+    data = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+  except jwt.PyJWKError as error:
+    print("ERROR WHILE DECODING REFRESH TOKEN :: ", error)
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or Expired Refresh Token.")
   
-  token = auth_header.split(" ")[1]
-  data =jwt.decode(
-    token, 
-    settings.SECRET_KEY, 
-    [settings.ALGORITHM], 
-    options={ "verify_exp": False } # Prevents ExpiredSignatureError from being thrown.
-  )
+  # ensure if it's actually a Refresh token.
+  if not data.get("refresh"):
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Refresh Token.")
+  
   user_id = data.get("_id")
-  exp_time = data.get("exp")
-  current_time = datetime.now(timezone.utc).timestamp()
-
-  if current_time > exp_time:
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You are not authorized.")
-  
   user = session.query(UsersModel).filter(UsersModel.id == user_id).first()
+
   if not user:
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You are not authorized.")
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User Not Found.")
+
+  # Generate Access Token
+  return create_auth_tokens(user.id, session, True)
   
-  return user
+
+
+
+
+
+
+
+
+  token_data = jwt.decode(refresh_token, settings.SECRET_KEY, [settings.ALGORITHM])
+  token_user_id = token_data.get("_id")
+
+  print("Comparing IDs ::: ", id, token_user_id)
+
+  if(token_user_id != id):
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Invalid User ID.")
+
+  user = session.query(UsersModel).filter(UsersModel.id == id).first()
+
+  if not user:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Invalid User ID.")
+
+  tokens = create_auth_tokens(user.id, session, True)
+  return tokens
 
 def get_user_by_id(id: int, session: Session) -> UserDataResponse | HTTPException:
   data = session.query(UsersModel).get(id)
