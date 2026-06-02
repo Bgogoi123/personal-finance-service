@@ -23,3 +23,10 @@ class UserDataResponse(BaseModel):
 class LoginSchema(BaseModel):
   identifier: str = Field(..., description="Can be username, email, or phone number")
   password: str
+
+class LoginResponseSchema(BaseModel):
+  access_token: str
+  refresh_token: str
+
+class RenewTokenResponseSchema(BaseModel):
+  access_token: str

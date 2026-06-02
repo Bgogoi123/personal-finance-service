@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta, timezone
 import jwt
-from src.auth.schema import CreateUserSchema, UserDataResponse, LoginSchema
+from src.auth.schema import CreateUserSchema, UserDataResponse, LoginSchema, RenewTokenResponseSchema
 from src.auth.models import UsersModel
 from src.utils.auth.passwords import get_hashed_password, verify_password
 from src.utils.settings import settings
@@ -49,7 +49,7 @@ def user_registration(body: CreateUserSchema, session: Session) -> UserDataRespo
       print("Error in creating user: ", e)
       raise HTTPException(500, "Something went wrong on the server, please try again later.")
 
-def user_login(body: LoginSchema, session: Session,):
+def user_login(body: LoginSchema, session: Session) -> LoginSchema | HTTPException:
   identifier = body.identifier.strip()
 
   if "@" in identifier:
@@ -69,7 +69,7 @@ def user_login(body: LoginSchema, session: Session,):
   tokens = create_auth_tokens(user.id, session)
   return tokens
 
-def renew_access_token(refresh_token: str, session: Session):
+def renew_access_token(refresh_token: str, session: Session) -> RenewTokenResponseSchema | HTTPException:
   try:
     # Cryptographically verify the refresh token
     data = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
@@ -124,7 +124,7 @@ def get_user_by_id(id: int, session: Session) -> UserDataResponse | HTTPExceptio
 
 def update_user_by_id(id: int, body: CreateUserSchema, session: Session) -> UserDataResponse | HTTPException:
   data = body.model_dump()
-  user = session.query(UsersModel).get(id)
+  user = session.query(UsersModel).filter(UsersModel.id==id).first()
 
   if not(user):
     raise HTTPException(404, f"No user found with ID {id}.")
