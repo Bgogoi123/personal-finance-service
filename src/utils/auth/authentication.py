@@ -4,12 +4,13 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 import jwt
 from src.auth.models import UsersModel
+from src.auth.schema import LoginSchema, RenewTokenResponseSchema
 from src.utils.settings import settings
 from src.utils.db import get_db
 
 security_scheme = HTTPBearer()
 
-def is_authenticated(credentials: HTTPAuthorizationCredentials = Depends(security_scheme), session: Session = Depends(get_db) ) -> UsersModel:
+def is_authenticated(credentials: HTTPAuthorizationCredentials = Depends(security_scheme), session: Session = Depends(get_db) ) -> UsersModel | HTTPException:
   token = credentials.credentials.split(" ")[1]
 
   try:
@@ -31,7 +32,7 @@ def is_authenticated(credentials: HTTPAuthorizationCredentials = Depends(securit
   
   return user
 
-def create_auth_tokens(user_id: int, session: Session, refresh: bool = False,):
+def create_auth_tokens(user_id: int, session: Session, refresh: bool = False,) -> LoginSchema | RenewTokenResponseSchema | HTTPException : 
   user = session.query(UsersModel).filter(UsersModel.id == user_id).first()
 
   if not user:

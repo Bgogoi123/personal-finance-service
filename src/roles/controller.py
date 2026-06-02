@@ -1,10 +1,12 @@
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
+from typing import List
 from datetime import datetime
 from sqlalchemy.exc import SQLAlchemyError
 from src.roles.schema import RolesCreateSchema, RolesResponseSchema
 from src.roles.models import RolesModel
 
+# Create a role
 def create_role(body: RolesCreateSchema, session: Session) -> RolesResponseSchema | HTTPException:
   data = body.model_dump()
 
@@ -21,21 +23,25 @@ def create_role(body: RolesCreateSchema, session: Session) -> RolesResponseSchem
     print("Error in creating role: ", e)
     raise HTTPException(500, "Something went wrong on the server, please try again later.")
 
-def get_all_roles(session: Session) -> RolesResponseSchema | HTTPException :
-  roles = session.query(RolesModel).all()
-
-  if(roles):
+# Get all roles
+def get_all_roles(session: Session) -> List[RolesResponseSchema] | HTTPException :
+  try:
+    roles = session.query(RolesModel).all()
     return roles
-  raise HTTPException(404, "No roles found.")
+  except SQLAlchemyError as err:
+    print("Error while fetching all roles :: ", err )
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No rules found.")
   
+# Get a role by ID
 def get_roles_by_id(id: int, session: Session) -> RolesResponseSchema | HTTPException:
-  role = session.query(RolesModel).get(id)
+  try:
+    role = session.query(RolesModel).get(id)
+    return role
+  except SQLAlchemyError as err:
+    print("Error while fetching role by id :: ", err)
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Role with ID {id} not found.")
 
-  if not(role):
-    raise HTTPException(404, f"Role with ID {id} not found.")
-
-  return role
-
+# Update a role by ID
 def update_role_by_id(id: int, body: RolesCreateSchema, session: Session) -> RolesResponseSchema | HTTPException:
   data = body.model_dump()
   role = session.query(RolesModel).filter(RolesModel.id==id).first()
@@ -56,6 +62,7 @@ def update_role_by_id(id: int, body: RolesCreateSchema, session: Session) -> Rol
   
   raise HTTPException(404, f"Role with ID {id} not found.")
 
+# Delete a role by ID
 def delete_role_by_id(id: int, session: Session) -> None | HTTPException:
   role = session.query(RolesModel).filter(RolesModel.id == id).first()
 
