@@ -1,100 +1,119 @@
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import select
 from typing import List
-from src.categories.schema import CreateCategorySchema, CategoryResponseSchema
+from src.auth.models import UsersModel
+from src.categories.schema import CategoryCreateSchema, CategoryResponseSchema, CategoryUpdateSchema
 from src.categories.models import CategoriesModel
 
 # Create a Category
-def create_category(body: CreateCategorySchema, session: Session) -> CategoryResponseSchema | HTTPException:
-  category = CategoriesModel(name = body.name, user_id = body.user_id)
-
+async def create_category(body: CategoryCreateSchema, session: AsyncSession, user: UsersModel) -> CategoryResponseSchema:
   if not body.name.strip() or body.name.strip() == "":
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Category Name.")
 
-  if(body.color):
-    setattr(category, "color", body.color)
+  category = CategoriesModel(name = body.name, color = body.color, user_id = user.id)
 
   try:
     session.add(category)
-    session.commit()
-    session.refresh(category)
-
-    return CategoryResponseSchema.model_validate(category)
+    await session.commit()
+    await session.refresh(category)
+    return category
   except SQLAlchemyError as err:
+    await session.rollback()
     print("Error while Creating Category :: ", err)
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong on the server, please try again later.")
   
 # Fetch All Categories
-def get_all_categories(session: Session) -> List[CategoryResponseSchema] | HTTPException :
+async def get_all_categories(session: AsyncSession, user: UsersModel) -> List[CategoryResponseSchema]:
   try: 
-    categories = session.query(CategoriesModel).all()
+    categories = await session.scalars(select(CategoriesModel).where(CategoriesModel.user_id == user.id))
+
+    if not categories:
+      raise HTTPException(
+          status_code=status.HTTP_404_NOT_FOUND, 
+          detail="Couldn't fetch categories."
+      )
+    
     return categories
-  except SQLAlchemyError as error:
-    print("Error while fetching all categories :: ", error)
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No categories found.")
+      
+  except SQLAlchemyError as err:
+    print("Error while fetching all categories :: ", err)
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong in the server. Please try again later.")
   
 # Fetch A Category by ID
-def get_category_by_id(id: int, session: Session) -> CategoryResponseSchema | HTTPException :
+async def get_category_by_id(id: str, session: AsyncSession, user: UsersModel) -> CategoryResponseSchema:
   if not id:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid User Id.")
-
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Category Id.")
+  
   try:
-    category = session.query(CategoriesModel).get(id)
+    stmt = select(CategoriesModel).where(CategoriesModel.id == id, CategoriesModel.user_id == user.id)
+    category = await session.scalar(stmt)
+
+    if not category:
+      raise HTTPException(
+          status_code=status.HTTP_404_NOT_FOUND, 
+          detail="Category Not Found."
+      )
     return category
+  
   except SQLAlchemyError as err:
     print("Error while fetching category by id :: ", err)
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Category with ID {id} not found.")
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Something went wrong in the server. Please try again later.")
 
 # Update A Category by ID
-def update_category_by_id(id: int, body: CreateCategorySchema, session: Session) -> CategoryResponseSchema | HTTPException :
+async def update_category_by_id(id: str, body: CategoryUpdateSchema, session: AsyncSession, user: UsersModel) -> CategoryResponseSchema:
   if not id:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Category ID.")
-  
-  category = session.query(CategoriesModel).filter(CategoriesModel.id==id).first()
-
-  if not category:
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found.")
-
-  for key, value in body.model_dump().items():
-    setattr(category, key, value)
 
   try: 
-    session.commit()
-    session.refresh(category)
-    return CategoryResponseSchema.model_validate(category)
+    stmt = select(CategoriesModel).where(CategoriesModel.id == id, CategoriesModel.user_id == user.id)
+    category = await session.scalar(stmt)
+
+    if not category:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found.")
+    
+    update_data = body.model_dump(exclude_unset=True) # ensures we only loop through fields provided in the request body
+
+    # Security Guard: Prevent altering ownership or ID during an update.
+    update_data.pop("id", None)
+    update_data.pop("user_id", None)
+
+    if body.name is not None : category.name = body.name
+    if body.color is not None : category.color = body.color
+
+    print("UPDATING CATAGORY ::: ", category.name, category.color)
+    
+
+    # for key, value in update_data.items():
+    #   setattr(category, key, value)
+
+    await session.commit()
+    await session.refresh(category)
+    return category
   except SQLAlchemyError as er:
+    await session.rollback() # Reverts DB state so the session isn't poisoned.
     print("Error while Updating Category :: ", er)
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong on the server, please try again later.")
     
 # Delete A Category by ID
-def delete_category_by_id(id: int, session: Session) -> None | HTTPException :
+async def delete_category_by_id(id: str, session: AsyncSession, user: UsersModel) -> dict:
   if not id:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Category ID.")
-
+  
   try:
-    category = session.query(CategoriesModel).filter(CategoriesModel.id == id).first()
+    stmt = select(CategoriesModel).where(CategoriesModel.id == id, CategoriesModel.user_id == user.id)
+    category = await session.scalar(stmt)
 
-    if category:
-      try:
-        session.delete(category)
-        session.commit()
-        return None
-      except SQLAlchemyError as error:
-        print("Error while deleting category :: ", error )
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong on the server, please try again later.")
-  except SQLAlchemyError as err: 
-    print("Error while fetching category to delete :: ", err)
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found.")
-
-
-
-
-
-  if(role):
-    session.delete(role)
-    session.commit()
-
+    if not category:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found.")
+    
+    await session.delete(category)
+    await session.commit()
     return None
   
-  raise HTTPException(404, f"Role with ID {id} Not Found.") 
+  except SQLAlchemyError as error:
+    await session.rollback()
+    print("Error while deleting category :: ", error )
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong on the server, please try again later.")
+  
