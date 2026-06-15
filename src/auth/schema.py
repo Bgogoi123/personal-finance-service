@@ -2,18 +2,25 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import datetime
 
-class CreateUserSchema(BaseModel):
+class UserCreateSchema(BaseModel):
   name: str
   phone_number: str
   email: str
   username: str
   password: str
-  role_id: int
+  role_id: str
 
-class UserDataResponse(BaseModel):
+class UserUpdateSchema(BaseModel):
+  name: Optional[str] = None
+  phone_number: Optional[str] = None
+  email: Optional[str] = None
+  username: Optional[str] = None
+  role_id: Optional[str] = None
+
+class UserResponseSchema(BaseModel):
   model_config = ConfigDict(from_attributes=True)
 
-  id: int
+  id: str
   name: str
   username: str
   email: str

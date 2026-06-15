@@ -1,10 +1,16 @@
-from sqlalchemy import Column, Integer, String, DateTime, func, ForeignKey
+from sqlalchemy import Column, String, DateTime, func, ForeignKey
+import uuid
 from src.utils.db import Base
 
 class UsersModel(Base):
   __tablename__ = "users"
 
-  id = Column(Integer, primary_key=True, autoincrement=True)
+  id = Column(
+    String,
+    primary_key=True,
+    default=lambda: str(uuid.uuid4()),
+    nullable=False
+  )
   name = Column(String, nullable=False)
   email = Column(String, nullable=False, unique=True)
   phone_number = Column(String, nullable=False, unique=True)
@@ -19,4 +25,4 @@ class UsersModel(Base):
       DateTime(timezone=True),
       nullable=True  # NULL until the role is actually updated
   )
-  role_id = Column(Integer, ForeignKey("roles.id", ondelete="CASCADE"), nullable=False)
+  role_id = Column(String, ForeignKey("roles.id", ondelete="RESTRICT", onupdate="CASCADE"), nullable=False)
