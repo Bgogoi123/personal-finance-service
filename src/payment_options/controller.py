@@ -76,7 +76,7 @@ async def update_payment_option_by_id(
   body: PaymentOptionsUpdateSchema,
   session: AsyncSession,
   user: UsersModel
-) -> PaymentOptionsModel :
+) -> PaymentOptionsResponseSchema :
   if not id:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Option ID.")
   
@@ -86,17 +86,6 @@ async def update_payment_option_by_id(
 
     if not option:
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Option not found.")
-    
-    update_data = body.model_dump(exclude_unset=True) # ensures we only loop through fields provided in the request body
-
-    # # Security Guard: Prevent altering ownership or ID during an update.
-    # # UPDATE :: BUT I'M NOT EVEN ACCEPTING THESE, SO WHT SHOULD I CHECK THEM? {figure it out later}
-    # update_data.pop("id", None)
-    # update_data.pop("user_id", None)
-
-    # for key, value in update_data.items():
-    #   setattr(option, key, value)
-
 
     if body.name is not None : option.name = body.name
     if body.payment_type is not None : option.payment_type = body.payment_type
