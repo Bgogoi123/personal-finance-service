@@ -1,9 +1,9 @@
+from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List
-from datetime import datetime, timezone
 from src.transaction.schema import TransactionCreateSchema, TransactionUpdateSchema, TransactionResponseSchema
 from src.transaction.models import TransactionsModel
 from src.auth.models import UsersModel
@@ -86,7 +86,7 @@ async def update_transaction_by_id(id: str, body: TransactionUpdateSchema, sessi
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong at the server, please try again later.")
 
 # delete transaction by id
-async def delete_transaction_by_id(id: str, session: AsyncSession, user: UsersModel)->TransactionResponseSchema:
+async def delete_transaction_by_id(id: str, session: AsyncSession, user: UsersModel) -> dict:
   if not id:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Transaction ID!")
   
@@ -103,5 +103,3 @@ async def delete_transaction_by_id(id: str, session: AsyncSession, user: UsersMo
     await session.rollback()
     print(f"Error while Deleting transaction with ID {id} :: {err}")
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong at the server, please try again later.")
-
-
