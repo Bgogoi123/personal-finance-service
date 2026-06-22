@@ -6,3 +6,4 @@ from src.categories.models import CategoriesModel
 from src.payment_options.models import PaymentOptionsModel
 from src.roles.models import RolesModel
 from src.transaction.models import TransactionsModel
+from src.balance.models import BalanceModel
