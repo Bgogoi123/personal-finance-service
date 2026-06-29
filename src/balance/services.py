@@ -20,4 +20,4 @@ async def adjust_user_balance(session: AsyncSession, user_id: str, amount_delta:
   
   # Apply the delta change
   balance.amount += amount_delta
-  balance.updated_at = datetime(timezone.utc)
+  balance.updated_at = datetime.now(timezone.utc)

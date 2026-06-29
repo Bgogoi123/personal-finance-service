@@ -48,16 +48,14 @@ async def create_balance(body: BalanceCreateSchema, session: AsyncSession, user:
         detail="Something went wrong in the server, please try again later."
     )
 
-# get balance by id for current user
-async def get_balance_by_id(id: str, session: AsyncSession, user: UsersModel) -> BalanceResponseSchema:
-  if not id:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Balance ID!")
-
+# get balance of current user
+async def get_current_user_balance(session: AsyncSession, user: UsersModel) -> BalanceResponseSchema:
   try:
-    balance = await session.scalar(select(BalanceModel).where(BalanceModel.id == id, BalanceModel.user_id == user.id))
-    if not balance: 
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Balance Not Found.")
+    balance = await session.scalar(select(BalanceModel).where(BalanceModel.user_id == user.id))
+    if not balance:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User balance record not found. Please create a balance profile.")
     return balance
+  
   except SQLAlchemyError as err:
     print(f"Error while fetching balance for id {id} :: {err}")
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong at the server, please try again later.")

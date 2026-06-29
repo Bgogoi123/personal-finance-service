@@ -17,10 +17,10 @@ user_dependency = Annotated[UsersModel, Depends(is_authenticated)]
 async def create_balance(body: BalanceCreateSchema, session: session_dependency, user: user_dependency):
   return await controller.create_balance(body, session, user)
 
-# get balance by id for current user
-@balance_routes.get("/{id}", response_model=BalanceResponseSchema, status_code=status.HTTP_200_OK)
-async def get_balance_by_id(id: str, body: BalanceCreateSchema, session: session_dependency, user: user_dependency ):
-  return await controller.get_balance_by_id(id, body, session, user)
+# get balance for current user
+@balance_routes.get("/", response_model=BalanceResponseSchema, status_code=status.HTTP_200_OK)
+async def get_current_user_balance(session: session_dependency, user: user_dependency ):
+  return await controller.get_current_user_balance(session, user)
 
 # update balance by id for current user
 @balance_routes.put("/update/{id}", response_model=BalanceResponseSchema, status_code=status.HTTP_201_CREATED)
