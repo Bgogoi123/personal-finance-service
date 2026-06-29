@@ -7,6 +7,7 @@ from typing import List
 from src.transaction.schema import TransactionCreateSchema, TransactionUpdateSchema, TransactionResponseSchema
 from src.transaction.models import TransactionsModel
 from src.auth.models import UsersModel
+from src.balance.services import adjust_user_balance
 
 # create transaction
 async def create_transaction(body: TransactionCreateSchema, session: AsyncSession, user: UsersModel) -> TransactionResponseSchema:
@@ -25,9 +26,19 @@ async def create_transaction(body: TransactionCreateSchema, session: AsyncSessio
 
   try:
     session.add(transaction)
+    
+    delta = body.amount if body.transaction_type == "income" else -body.amount
+    await adjust_user_balance(session, user.id, delta)
+
     await session.commit()
     await session.refresh(transaction)
     return transaction
+  
+  except HTTPException:
+    await session.rollback()
+    print("HTTP-Error in creating transaction :: ", err)
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong in the server, please try again later.")
+
   except SQLAlchemyError as err:
     await session.rollback()
     print("Error in creating transaction :: ", err)
