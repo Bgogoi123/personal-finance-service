@@ -11,7 +11,7 @@ from src.balance.services import adjust_user_balance
 
 # create transaction
 async def create_transaction(body: TransactionCreateSchema, session: AsyncSession, user: UsersModel) -> TransactionResponseSchema:
-  if not body.transaction_title.strip() or body.transaction_title.strip() == "":
+  if not body.transaction_title.strip():
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid title provided for the transaction.")
 
   transaction = TransactionsModel(
@@ -34,10 +34,10 @@ async def create_transaction(body: TransactionCreateSchema, session: AsyncSessio
     await session.refresh(transaction)
     return transaction
   
-  except HTTPException:
+  except HTTPException as err:
     await session.rollback()
     print("HTTP-Error in creating transaction :: ", err)
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong in the server, please try again later.")
+    raise
 
   except SQLAlchemyError as err:
     await session.rollback()
@@ -80,12 +80,25 @@ async def update_transaction_by_id(id: str, body: TransactionUpdateSchema, sessi
     if not transaction: 
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction Not Found!")
     
+    # Calculate and Reverse the old transaction impact.
+    previous_delta = transaction.amount if transaction.transaction_type == "income" else -transaction.amount
+    reversed_balance = -previous_delta
+    
     update_data = body.model_dump()
     for key, val in update_data.items():
       if val is not None:
         setattr(transaction, key, val)
 
     transaction.updated_at = datetime.now(timezone.utc)
+
+    # 2. Calculate the New transaction impact
+    new_delta = transaction.amount if transaction.transaction_type == "income" else -transaction.amount
+
+    # Total net change to pass to the balance
+    total_balance_adjustment = reversed_balance + new_delta
+
+    # Apply adjustment to balance row
+    await adjust_user_balance(session, user.id, total_balance_adjustment)
 
     await session.commit()
     await session.refresh(transaction)
