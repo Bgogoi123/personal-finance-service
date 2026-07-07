@@ -26,3 +26,17 @@ class UsersModel(Base):
       nullable=True  # NULL until the role is actually updated
   )
   role_id = Column(String, ForeignKey("roles.id", ondelete="RESTRICT", onupdate="CASCADE"), nullable=False)
+
+class RefreshTokensModel(Base):
+  __tablename__ = "refresh_tokens"
+
+  id = Column(
+    String,
+    primary_key=True,
+    default=lambda: str(uuid.uuid4()),
+    nullable=False
+  )
+  token = Column(String, unique=True, nullable=False, index=True)
+  expires_at = Column(DateTime, nullable=False)
+  device_info = Column(String, nullable=True)
+  user_id = Column(ForeignKey("users.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
