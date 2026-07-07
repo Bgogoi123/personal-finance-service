@@ -82,12 +82,6 @@ async def update_category_by_id(id: str, body: CategoryUpdateSchema, session: As
     if body.name is not None : category.name = body.name
     if body.color is not None : category.color = body.color
 
-    print("UPDATING CATAGORY ::: ", category.name, category.color)
-    
-
-    # for key, value in update_data.items():
-    #   setattr(category, key, value)
-
     await session.commit()
     await session.refresh(category)
     return category

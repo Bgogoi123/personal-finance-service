@@ -1,10 +1,11 @@
 import re
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy import  or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
 import jwt
+
 from src.auth.schema import UserCreateSchema, UserUpdateSchema, UserResponseSchema, LoginSchema, RenewTokenResponseSchema
 from src.auth.models import UsersModel
 from src.utils.auth.passwords import get_hashed_password, verify_password
@@ -90,7 +91,7 @@ async def user_registration(body: UserCreateSchema, session: AsyncSession) -> Us
       detail="Something went wrong on the server, please try again later."
     )
 
-async def user_login(body: LoginSchema, session: AsyncSession) -> LoginSchema:
+async def user_login(body: LoginSchema, session: AsyncSession, request: Request) -> LoginSchema:
   identifier = body.identifier.strip()
 
   if "@" in identifier:
@@ -100,18 +101,17 @@ async def user_login(body: LoginSchema, session: AsyncSession) -> LoginSchema:
   else:
     key = "username"
   
-  # user = await session.query(UsersModel).filter(getattr(UsersModel, key) == identifier).first()
   user = await session.scalar(select(UsersModel).where(getattr(UsersModel, key) == identifier))
   if not user:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Invalid {key} or password.")
   
   if not verify_password(body.password, user.password):
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Password.")
-  
-  tokens = await create_auth_tokens(user.id, session)
+
+  tokens = await create_auth_tokens(user.id, session, request)
   return tokens
 
-async def renew_access_token(refresh_token: str, session: AsyncSession) -> RenewTokenResponseSchema:
+async def renew_access_token(refresh_token: str, session: AsyncSession, request: Request) -> RenewTokenResponseSchema:
   try:
     # Cryptographically verify the refresh token
     data = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
@@ -130,7 +130,7 @@ async def renew_access_token(refresh_token: str, session: AsyncSession) -> Renew
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User Not Found.")
 
   # Generate Access Token
-  return await create_auth_tokens(user.id, session, True)
+  return await create_auth_tokens(user.id, session, request, True, refresh_token)
 
 async def get_profile_info(session: AsyncSession, user: UsersModel) -> UserResponseSchema:
   try:
