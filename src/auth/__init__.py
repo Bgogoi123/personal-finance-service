@@ -1,1 +1,1 @@
-from .models import UsersModel
+from .models import UsersModel, RefreshTokensModel

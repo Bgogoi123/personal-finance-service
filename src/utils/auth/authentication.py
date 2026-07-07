@@ -53,6 +53,7 @@ async def create_auth_tokens(user_id: str, session: AsyncSession, is_renew: bool
 
   # Create Refresh Token only if is_renew == True.
   refresh_token_expiry_days = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRY_DAYS)
+  print("refresh_token_expiry_days :::: ", refresh_token_expiry_days)
   refresh_token = jwt.encode({"_id": str(user.id), "username": user.username, "exp": refresh_token_expiry_days, "refresh": True }, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
   
   return { "access_token": access_token, "refresh_token": refresh_token }

@@ -109,26 +109,6 @@ async def update_transaction_by_id(id: str, body: TransactionUpdateSchema, sessi
     print(f"Error while updating transaction with id {id} :: {error}")
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong at the server, please try again later.")
 
-# delete transaction by id
-# async def delete_transaction_by_id(id: str, session: AsyncSession, user: UsersModel) -> dict:
-#   if not id:
-#     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Transaction ID!")
-  
-#   try:
-#     transaction = await session.scalar(select(TransactionsModel).where(TransactionsModel.id == id, TransactionsModel.user_id == user.id))
-#     if not transaction:
-#       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction Not Found!")
-    
-#     await session.delete(transaction)
-#     await session.commit()
-#     return None
-
-#   except SQLAlchemyError as err:
-#     await session.rollback()
-#     print(f"Error while Deleting transaction with ID {id} :: {err}")
-#     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong at the server, please try again later.")
-
-
 async def delete_transaction_by_id(id: str, session: AsyncSession, user: UsersModel) -> None:
   if not id:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Transaction ID!")
