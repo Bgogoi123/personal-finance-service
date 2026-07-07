@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
+from user_agents import parse
+
 from src.auth import controller
 from src.utils.db import get_db
 from src.auth.schema import UserCreateSchema, UserUpdateSchema, UserResponseSchema, LoginSchema
@@ -16,12 +18,12 @@ async def user_registration(body: UserCreateSchema, session: session_dependency)
   return await controller.user_registration(body, session)
 
 @auth_routes.post("/login", status_code=status.HTTP_202_ACCEPTED)
-async def user_login(body: LoginSchema, session: session_dependency):
-  return await controller.user_login(body, session)
+async def user_login(body: LoginSchema, session: session_dependency, request : Request):
+  return await controller.user_login(body, session, request)
 
 @auth_routes.post("/renew-access-token", status_code=status.HTTP_200_OK)
-async def renew_access_token(refresh_token: str, session: session_dependency):
-  return await controller.renew_access_token(refresh_token, session)
+async def renew_access_token(refresh_token: str, session: session_dependency, request: Request):
+  return await controller.renew_access_token(refresh_token, session, request)
 
 @auth_routes.get(
     "/profile/{id}",

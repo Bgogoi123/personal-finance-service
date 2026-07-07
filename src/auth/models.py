@@ -37,6 +37,6 @@ class RefreshTokensModel(Base):
     nullable=False
   )
   token = Column(String, unique=True, nullable=False, index=True)
-  expires_at = Column(DateTime, nullable=False)
+  expires_at = Column(DateTime(timezone=True), nullable=False)
   device_info = Column(String, nullable=True)
   user_id = Column(ForeignKey("users.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)

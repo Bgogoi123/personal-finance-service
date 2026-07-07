@@ -37,3 +37,10 @@ class LoginResponseSchema(BaseModel):
 
 class RenewTokenResponseSchema(BaseModel):
   access_token: str
+
+class DeviceDetails(BaseModel):
+  ip_address: Optional[str] = None
+  device_type: str
+  device_name: str
+  operating_system: str
+  browser: str
