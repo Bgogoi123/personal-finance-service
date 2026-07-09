@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
-from user_agents import parse
 
 from src.auth import controller
 from src.utils.db import get_db
@@ -41,3 +40,7 @@ async def update_profile(body: UserUpdateSchema, session: session_dependency, us
 @auth_routes.delete("/delete/{id}", response_model=None, status_code=status.HTTP_204_NO_CONTENT)
 async def delete_account(session: session_dependency, user: user_dependency):
   return await controller.delete_account(session, user)
+
+@auth_routes.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(refresh_token: str, session: session_dependency, user: user_dependency):
+  return await controller.logout(refresh_token, session, user)

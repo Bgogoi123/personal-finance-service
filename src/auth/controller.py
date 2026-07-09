@@ -5,13 +5,15 @@ from sqlalchemy import  or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
 import jwt
+import ast
 
 from src.auth.schema import UserCreateSchema, UserUpdateSchema, UserResponseSchema, LoginSchema, RenewTokenResponseSchema
-from src.auth.models import UsersModel
+from src.auth.models import UsersModel, RefreshTokensModel
 from src.utils.auth.passwords import get_hashed_password, verify_password
 from src.utils.settings import settings
 from src.utils.auth.authentication import create_auth_tokens
 from src.roles.models import RolesModel
+
 
 async def user_registration(body: UserCreateSchema, session: AsyncSession) -> UserResponseSchema:
   try:
@@ -210,4 +212,23 @@ async def delete_account(session: AsyncSession, user: UsersModel) -> None:
   except SQLAlchemyError as err:
     await session.rollback()
     print("Error in deleting user profile.")
+    raise HTTPException(500, f"Something went wrong in the server, please try again later.")
+
+async def logout(refresh_token: str, session: AsyncSession, user: UsersModel):
+  if not refresh_token:
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Refresh Token!")
+  
+  try:
+    token = await session.scalar(select(RefreshTokensModel).where(RefreshTokensModel.token == refresh_token, RefreshTokensModel.user_id == user.id))
+    if not token:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid Refresh Token!")
+    
+    # device_details = ast.literal_eval(token.device_info)
+    # print("CHECK ||  :: ", device_details, device_details["ip_address"] )
+    await session.delete(token)
+    await session.commit()
+    return None
+  
+  except SQLAlchemyError as error:
+    print(f"Error while Logout :: {error}")
     raise HTTPException(500, f"Something went wrong in the server, please try again later.")
