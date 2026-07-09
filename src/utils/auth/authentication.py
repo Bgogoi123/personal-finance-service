@@ -42,7 +42,7 @@ async def is_authenticated(
   
   return user
 
-def get_client_details(client: UserAgent):
+def get_client_details(client: UserAgent, client_ip: str):
   device_type = "Mobile" if client.is_mobile else "Tablet" if client.is_tablet else "PC"
   device_brand = client.device.brand or "Generic"
   device_model = client.device.model or "Device"
@@ -52,13 +52,15 @@ def get_client_details(client: UserAgent):
   operating_system = f"{os_name} {os_version}"
   browser = client.get_browser()
 
-  device_details = DeviceDetails(
-    device_type = device_type, 
-    device_name = device_name, 
-    operating_system = operating_system, 
-    browser = browser
-  )
 
+  device_details = {
+    "ip_address": client_ip,
+    "device_type" : device_type, 
+    "device_name" : device_name, 
+    "operating_system" : operating_system, 
+    "browser" : browser
+  }
+  
   return device_details
 
 
@@ -99,8 +101,9 @@ async def create_auth_tokens(user_id: str, session: AsyncSession, request: Reque
 
   client_ip = request.client.host if request.client else "Unknown"
   client = parse(request.headers.get("user-agent"))
-  client_details = get_client_details(client)
-  client_details.ip_address = client_ip
+  client_details = get_client_details(client, client_ip)
+
+  print("client details ::: ", client_details)
 
   # store at refresh_tokens table.
   try: 
