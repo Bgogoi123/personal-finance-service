@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, func, ForeignKey
+from sqlalchemy import Column, String, DateTime, func, ForeignKey, JSON
 import uuid
 from src.utils.db import Base
 
@@ -38,5 +38,5 @@ class RefreshTokensModel(Base):
   )
   token = Column(String, unique=True, nullable=False, index=True)
   expires_at = Column(DateTime(timezone=True), nullable=False)
-  device_info = Column(String, nullable=True)
+  device_info = Column(JSON, nullable=True)
   user_id = Column(ForeignKey("users.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)

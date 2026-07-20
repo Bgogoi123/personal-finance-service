@@ -1,7 +1,7 @@
 import re
 from fastapi import HTTPException, Request, status
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy import  or_, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
 import jwt
@@ -103,22 +103,36 @@ async def user_login(body: LoginSchema, session: AsyncSession, request: Request)
   else:
     key = "username"
   
-  user = await session.scalar(select(UsersModel).where(getattr(UsersModel, key) == identifier))
-  if not user:
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Invalid {key} or password.")
-  
-  if not verify_password(body.password, user.password):
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Password.")
+  try:
+    user = await session.scalar(select(UsersModel).where(getattr(UsersModel, key) == identifier))
+    if not user:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Invalid {key} or password.")
+    
+    # Delete expired tokens for the current user
+    await session.execute(delete(RefreshTokensModel).where(RefreshTokensModel.user_id == user.id, RefreshTokensModel.expires_at < datetime.now(timezone.utc)))
+    
+    if not verify_password(body.password, user.password):
+      raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Password.")
 
-  tokens = await create_auth_tokens(user.id, session, request)
-  return tokens
+    tokens = await create_auth_tokens(user.id, session, request)
+    return tokens
+  
+  except SQLAlchemyError as error: 
+    print(f"Error while Login :: {error}")
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong on the server, please try again later.")
 
 async def renew_access_token(refresh_token: str, session: AsyncSession, request: Request) -> RenewTokenResponseSchema:
   try:
+    # If token exist in db, delete it before proceeding.
+    await session.execute(delete(RefreshTokensModel).where(RefreshTokensModel.user_id == user_id))
+    
     # Cryptographically verify the refresh token
     data = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+  except SQLAlchemyError as err:
+    await session.rollback()
+    print("Error while deleting refresh token in renew-access-token process :: ", err)
   except jwt.PyJWKError as error:
-    print("ERROR WHILE DECODING REFRESH TOKEN :: ", error)
+    print("Error while decoding refresh token :: ", error)
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or Expired Refresh Token.")
   
   # ensure if it's actually a Refresh token.
@@ -130,6 +144,8 @@ async def renew_access_token(refresh_token: str, session: AsyncSession, request:
 
   if not user:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User Not Found.")
+  
+
 
   # Generate Access Token
   return await create_auth_tokens(user.id, session, request, True, refresh_token)
