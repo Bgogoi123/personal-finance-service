@@ -122,15 +122,13 @@ async def user_login(body: LoginSchema, session: AsyncSession, request: Request)
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong on the server, please try again later.")
 
 async def renew_access_token(refresh_token: str, session: AsyncSession, request: Request) -> RenewTokenResponseSchema:
-  try:
+
     # If token exist in db, delete it before proceeding.
-    await session.execute(delete(RefreshTokensModel).where(RefreshTokensModel.user_id == user_id))
-    
+    # await session.execute(delete(RefreshTokensModel).where(RefreshTokensModel.user_id == user_id))
+
+  try:
     # Cryptographically verify the refresh token
     data = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-  except SQLAlchemyError as err:
-    await session.rollback()
-    print("Error while deleting refresh token in renew-access-token process :: ", err)
   except jwt.PyJWKError as error:
     print("Error while decoding refresh token :: ", error)
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or Expired Refresh Token.")
@@ -145,8 +143,6 @@ async def renew_access_token(refresh_token: str, session: AsyncSession, request:
   if not user:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User Not Found.")
   
-
-
   # Generate Access Token
   return await create_auth_tokens(user.id, session, request, True, refresh_token)
 
@@ -232,7 +228,7 @@ async def delete_account(session: AsyncSession, user: UsersModel) -> None:
 
 async def logout(refresh_token: str, session: AsyncSession, user: UsersModel):
   if not refresh_token:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Refresh Token!")
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Refresh Token.")
   
   try:
     token = await session.scalar(select(RefreshTokensModel).where(RefreshTokensModel.token == refresh_token, RefreshTokensModel.user_id == user.id))

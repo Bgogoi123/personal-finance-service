@@ -18,9 +18,7 @@ async def is_authenticated(
   credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
   session: AsyncSession = Depends(get_db)
 ):
-  print("TOKEN AUTHHHH ", credentials)
-  
-  token = credentials.credentials.split(" ")[1]
+  token = credentials.credentials
 
   try:
     data = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
