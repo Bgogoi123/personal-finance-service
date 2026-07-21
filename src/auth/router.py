@@ -21,10 +21,10 @@ async def user_login(body: LoginSchema, session: session_dependency, request : R
   return await controller.user_login(body, session, request)
 
 @auth_routes.post("/renew-access-token", status_code=status.HTTP_200_OK)
-async def renew_access_token(session: session_dependency, request: Request, authorization: str = Header(None)):
-  if not authorization or not authorization.startswith("Bearer"):
+async def renew_access_token(session: session_dependency, request: Request, refresh_token: str = Header(None, alias='Refresh-Token')):
+  if not refresh_token:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Authorization Header Layout.")
-  refresh_token = authorization.split(" ")[1]
+  
   return await controller.renew_access_token(refresh_token, session, request)
 
 @auth_routes.get(
@@ -45,10 +45,9 @@ async def delete_account(session: session_dependency, user: user_dependency):
   return await controller.delete_account(session, user)
 
 @auth_routes.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(session: session_dependency, user: user_dependency, authorization: str = Header(None)):
-  print("LOGOUT ---> ", authorization)
+async def logout(session: session_dependency, user: user_dependency, refresh_token: str = Header(None, alias="Refresh-Token")):
 
-  if not authorization or not authorization.startswith("Bearer"):
+  if not refresh_token:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Authorization Header Layout.")
-  refresh_token = authorization.split(" ")[1]
+  
   return await controller.logout(refresh_token, session, user)
