@@ -12,7 +12,7 @@ auth_routes = APIRouter(prefix="/auth")
 session_dependency = Annotated[AsyncSession, Depends(get_db)]
 user_dependency = Annotated[UsersModel, Depends(is_authenticated)]
 
-@auth_routes.post("/register", response_model=UserResponseSchema, response_model_exclude={"updated_at"}, status_code=status.HTTP_201_CREATED)
+@auth_routes.post("/sign-up", response_model=UserResponseSchema, response_model_exclude={"updated_at"}, status_code=status.HTTP_201_CREATED)
 async def user_registration(body: UserCreateSchema, session: session_dependency):
   return await controller.user_registration(body, session)
 
