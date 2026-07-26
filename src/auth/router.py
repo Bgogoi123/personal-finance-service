@@ -21,11 +21,11 @@ async def user_login(body: LoginSchema, session: session_dependency, request : R
   return await controller.user_login(body, session, request)
 
 @auth_routes.post("/renew-access-token", status_code=status.HTTP_200_OK)
-async def renew_access_token(session: session_dependency, request: Request, refresh_token: str = Header(None, alias='Refresh-Token')):
+async def renew_access_token(session: session_dependency, request: Request, refresh_token: str = Header(None, alias='Refresh-Token'), user_id:str = Header(None, alias="User-ID")):
   if not refresh_token:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Authorization Header Layout.")
   
-  return await controller.renew_access_token(refresh_token, session, request)
+  return await controller.renew_access_token(refresh_token, user_id, session, request)
 
 @auth_routes.get(
     "/profile/{id}",

@@ -121,30 +121,54 @@ async def user_login(body: LoginSchema, session: AsyncSession, request: Request)
     print(f"Error while Login :: {error}")
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong on the server, please try again later.")
 
-async def renew_access_token(refresh_token: str, session: AsyncSession, request: Request) -> RenewTokenResponseSchema:
-
-    # If token exist in db, delete it before proceeding.
-    # await session.execute(delete(RefreshTokensModel).where(RefreshTokensModel.user_id == user_id))
-
+async def renew_access_token(refresh_token: str, user_id: str, session: AsyncSession, request: Request) -> RenewTokenResponseSchema:
   try:
+    if user_id:
+      # Check if user actually exist.
+      user = await session.scalar(select(UsersModel).where(UsersModel.id == user_id))
+
+      if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User Not Found.")
+
+      # Delete all expired tokens for this user from DB.
+      await session.execute(delete(RefreshTokensModel).where(RefreshTokensModel.user_id == user_id, RefreshTokensModel.expires_at < datetime.now(timezone.utc)))
+      await session.commit()
+
     # Cryptographically verify the refresh token
     data = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+
+    # Ensure if it's actually a Refresh token.
+    if not data.get("refresh"):
+      raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Refresh Token.")
+    
+    # Ensure token belongs to the logged-in user.
+    user_id_jwt = data.get("_id")
+    if not user_id_jwt == user_id:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token doesn't belong to the current user.")
+
+    # Check if token exist in DB
+    db_token = await session.scalar(select(RefreshTokensModel).where(RefreshTokensModel.token == refresh_token, RefreshTokensModel.user_id == user.id))
+    if not db_token:
+      raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token has been revoked or logged out.")
+    
+    # Generate Access Token
+    return await create_auth_tokens(user.id, session, request, True, refresh_token)
+
   except jwt.PyJWKError as error:
     print("Error while decoding refresh token :: ", error)
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or Expired Refresh Token.")
-  
-  # ensure if it's actually a Refresh token.
-  if not data.get("refresh"):
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Refresh Token.")
   
-  user_id = data.get("_id")
-  user = await session.scalar(select(UsersModel).where(UsersModel.id == user_id))
-
-  if not user:
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User Not Found.")
+  except jwt.ExpiredSignatureError as expErr:
+    print("Error while decoding refresh token :: ", expErr)
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh Token has expired. Please log in again.")
   
-  # Generate Access Token
-  return await create_auth_tokens(user.id, session, request, True, refresh_token)
+  except SQLAlchemyError as err: 
+    await session.rollback()
+    print(f"Error in deleting tokens while renewing-access-token : {err}")
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong in the server. Please try again later.")
+
+  
+
 
 async def get_profile_info(session: AsyncSession, user: UsersModel) -> UserResponseSchema:
   try:
@@ -158,7 +182,7 @@ async def get_profile_info(session: AsyncSession, user: UsersModel) -> UserRespo
     return profile_data
   except SQLAlchemyError as err:
     print("Error while fetching user profile info :: ", err)
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Something went wrong in the server. Please try again later.")
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong in the server. Please try again later.")
 
 async def update_profile(body: UserUpdateSchema, session: AsyncSession, user: UsersModel) -> UserResponseSchema:
   current_user = await session.scalar(select(UsersModel).where(UsersModel.id == user.id))
