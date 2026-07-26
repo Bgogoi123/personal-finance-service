@@ -5,7 +5,6 @@ from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
 import jwt
-import ast
 
 from src.auth.schema import UserCreateSchema, UserUpdateSchema, UserResponseSchema, LoginSchema, RenewTokenResponseSchema
 from src.auth.models import UsersModel, RefreshTokensModel
@@ -167,9 +166,6 @@ async def renew_access_token(refresh_token: str, user_id: str, session: AsyncSes
     print(f"Error in deleting tokens while renewing-access-token : {err}")
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong in the server. Please try again later.")
 
-  
-
-
 async def get_profile_info(session: AsyncSession, user: UsersModel) -> UserResponseSchema:
   try:
     profile_data = await session.scalar(select(UsersModel).where(UsersModel.id == user.id))
@@ -259,8 +255,6 @@ async def logout(refresh_token: str, session: AsyncSession, user: UsersModel):
     if not token:
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid Refresh Token!")
     
-    # device_details = ast.literal_eval(token.device_info)
-    # print("CHECK ||  :: ", device_details, device_details["ip_address"] )
     await session.delete(token)
     await session.commit()
     return None
