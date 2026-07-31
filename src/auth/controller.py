@@ -13,10 +13,30 @@ from src.utils.settings import settings
 from src.utils.auth.authentication import create_auth_tokens
 from src.roles.models import RolesModel
 
+USERNAME_REGEX = r"^[a-zA-Z0-9_]+$"
+EMAIL_REGEX = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+PHONE_REGEX = r"^\+?[0-9\s\-()]{7,15}$"
+
 
 async def user_registration(body: UserCreateSchema, session: AsyncSession) -> UserResponseSchema:
+  # Validate Email, Phone Number, and Username.
+  email = body.email.strip()
+  phone_number = body.phone_number.strip()
+  user_name = body.username.strip()
+
+  if not re.fullmatch(EMAIL_REGEX, email):
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Email!")
+  
+  if not re.fullmatch(PHONE_REGEX, phone_number):
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Phone Number!")
+  
+  if not re.fullmatch(USERNAME_REGEX, user_name):
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Username! Must contain only letters (uppercase or lowercase), numbers, and underscores (_)")
+
+  # Validate Role.
   try:
     role_exists = await session.scalar(select(RolesModel.id).where(RolesModel.id == body.role_id))
+  
   except SQLAlchemyError as err:
     print(f"Database error during role check: {err}")
     raise HTTPException(status_code=500, detail="Database communication failure.")
@@ -27,16 +47,18 @@ async def user_registration(body: UserCreateSchema, session: AsyncSession) -> Us
       detail="The assigned Role ID does not exist."
     )
 
+  # Check if user already exist. (Check agains email, phone_number, and username)
   try:
     existing_user = await session.scalar(
       select(UsersModel).where(
         or_(
-          UsersModel.username == body.username,
-          UsersModel.email == body.email,
-          UsersModel.phone_number == body.phone_number
+          UsersModel.username == user_name,
+          UsersModel.email == email,
+          UsersModel.phone_number == phone_number
         )
       )
     )
+
   except SQLAlchemyError as err:
     print(f"Database error during user duplicate check: {err}")
     raise HTTPException(
@@ -44,26 +66,28 @@ async def user_registration(body: UserCreateSchema, session: AsyncSession) -> Us
       detail="Database communication failure."
     )
 
+  # If user exist, raise error against the identifier (email, phone_number, or username)
   if existing_user:
-
-    if existing_user.username == body.username:
+    if existing_user.username == user_name:
       raise HTTPException(status.HTTP_400_BAD_REQUEST, "Username already exists! Please use a different username.")
-    if existing_user.email == body.email:
+    if existing_user.email == email:
       raise HTTPException(status.HTTP_400_BAD_REQUEST, "Email ID already exists! Please use a different email.")
-    if existing_user.phone_number == body.phone_number:
+    if existing_user.phone_number == phone_number:
       raise HTTPException(status.HTTP_400_BAD_REQUEST, "Phone number already exists! Please use a different phone number.")
 
   hashed_password = get_hashed_password(body.password)
   
+  # Create new user object
   new_user = UsersModel(
     name=body.name,
-    phone_number=body.phone_number,
-    email=body.email,
-    username=body.username,
+    phone_number=phone_number,
+    email=email,
+    username=user_name,
     password=hashed_password,
     role_id=body.role_id
   )
 
+  # Query for creating new user.
   try:
     session.add(new_user)
     await session.commit()
@@ -95,12 +119,14 @@ async def user_registration(body: UserCreateSchema, session: AsyncSession) -> Us
 async def user_login(body: LoginSchema, session: AsyncSession, request: Request) -> LoginSchema:
   identifier = body.identifier.strip()
 
-  if "@" in identifier:
+  if re.fullmatch(EMAIL_REGEX, identifier):
     key = "email"
-  elif re.match(r"^\+?1?\d{9,15}$", identifier):
+  elif re.fullmatch(PHONE_REGEX, identifier):
     key = "phone_number"
-  else:
+  elif re.fullmatch(USERNAME_REGEX, identifier):
     key = "username"
+  else:
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Identifier.")
   
   try:
     user = await session.scalar(select(UsersModel).where(getattr(UsersModel, key) == identifier))

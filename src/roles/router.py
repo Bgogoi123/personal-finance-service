@@ -27,7 +27,7 @@ user_dependency = Annotated[UsersModel, Depends(is_authenticated)]
 
 #  Get all roles
 @roles_routes.get("/", response_model=List[RolesResponseSchema], status_code=status.HTTP_200_OK )
-async def get_all_roles(session: session_dependency, user: user_dependency):
+async def get_all_roles(session: session_dependency):
   return await controller.get_all_roles(session)
 
 # # [[Hide]] Get role by id
