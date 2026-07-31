@@ -230,8 +230,6 @@ async def update_profile(body: UserUpdateSchema, session: AsyncSession, user: Us
   if body.email is not None: clauses.append(UsersModel.email == body.email)
   if body.phone_number is not None: clauses.append(UsersModel.phone_number == body.phone_number)
 
-  print("CLAUSES FORMED ::: ", clauses)
-
   existing_conflict = None
   if clauses:
     existing_conflict = await session.scalar(select(UsersModel).where(UsersModel.id != user.id, or_(*clauses)))
@@ -269,7 +267,7 @@ async def delete_account(session: AsyncSession, user: UsersModel) -> None:
     return None
   except SQLAlchemyError as err:
     await session.rollback()
-    print("Error in deleting user profile.")
+    print("Error in deleting user profile.", err)
     raise HTTPException(500, f"Something went wrong in the server, please try again later.")
 
 async def logout(refresh_token: str, session: AsyncSession, user: UsersModel):
