@@ -4,7 +4,7 @@ from typing import Annotated
 
 from src.auth import controller
 from src.utils.db import get_db
-from src.auth.schema import UserCreateSchema, UserUpdateSchema, UserResponseSchema, LoginSchema
+from src.auth.schema import ChangePasswordSchema, LoginSchema, UserCreateSchema,UserResponseSchema, UserUpdateSchema
 from src.auth.models import UsersModel
 from src.utils.auth.authentication import is_authenticated
 
@@ -40,14 +40,19 @@ async def get_profile_info(session: session_dependency, user: user_dependency):
 async def update_profile(body: UserUpdateSchema, session: session_dependency, user: user_dependency):
   return await controller.update_profile(body, session, user)
 
-@auth_routes.delete("/delete/{id}", response_model=None, status_code=status.HTTP_204_NO_CONTENT)
-async def delete_account(session: session_dependency, user: user_dependency):
-  return await controller.delete_account(session, user)
+@auth_routes.put("/change-password", status_code=status.HTTP_202_ACCEPTED)
+async def change_password(session: session_dependency, user: user_dependency, body: ChangePasswordSchema):
+  return await controller.change_password(session, user, body)
 
 @auth_routes.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(session: session_dependency, user: user_dependency, refresh_token: str = Header(None, alias="Refresh-Token")):
-
   if not refresh_token:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Authorization Header Layout.")
   
   return await controller.logout(refresh_token, session, user)
+
+@auth_routes.delete("/delete/{id}", response_model=None, status_code=status.HTTP_204_NO_CONTENT)
+async def delete_account(session: session_dependency, user: user_dependency):
+  return await controller.delete_account(session, user)
+
+

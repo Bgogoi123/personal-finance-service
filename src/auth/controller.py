@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
 import jwt
 
-from src.auth.schema import UserCreateSchema, UserUpdateSchema, UserResponseSchema, LoginSchema, RenewTokenResponseSchema
+from src.auth.schema import ChangePasswordSchema, LoginSchema, RenewTokenResponseSchema, UserCreateSchema, UserResponseSchema, UserUpdateSchema
 from src.auth.models import UsersModel, RefreshTokensModel
 from src.utils.auth.passwords import get_hashed_password, verify_password
 from src.utils.settings import settings
@@ -15,12 +15,15 @@ from src.roles.models import RolesModel
 
 USERNAME_REGEX = r"^[a-zA-Z0-9_]+$"
 EMAIL_REGEX = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+PASSWORD_REGEX = "^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$"
 PHONE_REGEX = r"^\+?[0-9\s\-()]{7,15}$"
 
+PASSWORD_RULE_MESSAGE = "Password should be atleast 8 characters in length, atleast one lower case letter, atleast one upper case letter, atleast one digit, atleast one special character (#?!@$%^&*-)."
 
 async def user_registration(body: UserCreateSchema, session: AsyncSession) -> UserResponseSchema:
   # Validate Email, Phone Number, and Username.
   email = body.email.strip()
+  password = body.password.strip()
   phone_number = body.phone_number.strip()
   user_name = body.username.strip()
 
@@ -32,6 +35,9 @@ async def user_registration(body: UserCreateSchema, session: AsyncSession) -> Us
   
   if not re.fullmatch(USERNAME_REGEX, user_name):
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Username! Must contain only letters (uppercase or lowercase), numbers, and underscores (_)")
+  
+  if not re.fullmatch(PASSWORD_REGEX, password):
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=PASSWORD_RULE_MESSAGE)
 
   # Validate Role.
   try:
@@ -75,7 +81,7 @@ async def user_registration(body: UserCreateSchema, session: AsyncSession) -> Us
     if existing_user.phone_number == phone_number:
       raise HTTPException(status.HTTP_400_BAD_REQUEST, "Phone number already exists! Please use a different phone number.")
 
-  hashed_password = get_hashed_password(body.password)
+  hashed_password = get_hashed_password(password)
   
   # Create new user object
   new_user = UsersModel(
@@ -128,6 +134,9 @@ async def user_login(body: LoginSchema, session: AsyncSession, request: Request)
   else:
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Identifier.")
   
+  if not re.fullmatch(PASSWORD_REGEX, body.password.strip()):
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=PASSWORD_RULE_MESSAGE)
+
   try:
     user = await session.scalar(select(UsersModel).where(getattr(UsersModel, key) == identifier))
     if not user:
@@ -255,20 +264,6 @@ async def update_profile(body: UserUpdateSchema, session: AsyncSession, user: Us
   except SQLAlchemyError as err:
     print(f"Database error during profile update: {err}")
     raise HTTPException(status_code=500, detail="Failed to update profile.")
-  
-async def delete_account(session: AsyncSession, user: UsersModel) -> None:
-  try:
-    current_user = await session.scalar(select(UsersModel).where(UsersModel.id == user.id))
-    if not (current_user):
-      raise HTTPException(404, f"User Not Found!")
-    
-    await session.delete(user)
-    await session.commit()
-    return None
-  except SQLAlchemyError as err:
-    await session.rollback()
-    print("Error in deleting user profile.", err)
-    raise HTTPException(500, f"Something went wrong in the server, please try again later.")
 
 async def logout(refresh_token: str, session: AsyncSession, user: UsersModel):
   if not refresh_token:
@@ -286,3 +281,44 @@ async def logout(refresh_token: str, session: AsyncSession, user: UsersModel):
   except SQLAlchemyError as error:
     print(f"Error while Logout :: {error}")
     raise HTTPException(500, f"Something went wrong in the server, please try again later.")
+
+async def delete_account(session: AsyncSession, user: UsersModel) -> None:
+  try:
+    current_user = await session.scalar(select(UsersModel).where(UsersModel.id == user.id))
+    if not (current_user):
+      raise HTTPException(404, f"User Not Found!")
+    
+    await session.delete(user)
+    await session.commit()
+    return None
+  except SQLAlchemyError as err:
+    await session.rollback()
+    print("Error in deleting user profile.", err)
+    raise HTTPException(500, f"Something went wrong in the server, please try again later.")
+
+async def change_password(session: AsyncSession, user: UsersModel, body: ChangePasswordSchema):
+  if not re.fullmatch(PASSWORD_REGEX, body.new_password.strip()) or not re.fullmatch(PASSWORD_REGEX, body.old_password):
+  # if not re.fullmatch(PASSWORD_REGEX, body.new_password.strip()):
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=PASSWORD_RULE_MESSAGE)
+
+  if not verify_password(body.old_password, user.password):
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Please enter the Correct Old Password.")
+  
+  hashed_password = get_hashed_password(body.new_password)
+
+  try:
+    current_user = await session.scalar(select(UsersModel).where(UsersModel.id == user.id))
+    if not current_user:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+  
+    current_user.password = hashed_password
+
+    await session.commit()
+    await session.refresh(current_user)
+    return current_user
+
+  except SQLAlchemyError as err:
+    await session.rollback()
+    print(f"Error while changing password :: {err}")
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong, try again later.")
+  

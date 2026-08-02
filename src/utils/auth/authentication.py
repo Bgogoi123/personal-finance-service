@@ -5,7 +5,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import select
 from datetime import datetime, timedelta, timezone
 import jwt
-from ua_parser import UserAgent
 from user_agents import parse
 
 from src.auth.models import UsersModel, RefreshTokensModel

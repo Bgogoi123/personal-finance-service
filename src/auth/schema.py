@@ -37,4 +37,8 @@ class LoginResponseSchema(BaseModel):
 
 class RenewTokenResponseSchema(BaseModel):
   access_token: str
+
+class ChangePasswordSchema(BaseModel):
+  old_password: str
+  new_password: str
   
