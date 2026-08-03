@@ -144,6 +144,7 @@ async def user_login(body: LoginSchema, session: AsyncSession, request: Request)
     
     # Delete expired tokens for the current user
     await session.execute(delete(RefreshTokensModel).where(RefreshTokensModel.user_id == user.id, RefreshTokensModel.expires_at < datetime.now(timezone.utc)))
+    await session.commit()
     
     if not verify_password(body.password, user.password):
       raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Password.")
@@ -265,40 +266,8 @@ async def update_profile(body: UserUpdateSchema, session: AsyncSession, user: Us
     print(f"Database error during profile update: {err}")
     raise HTTPException(status_code=500, detail="Failed to update profile.")
 
-async def logout(refresh_token: str, session: AsyncSession, user: UsersModel):
-  if not refresh_token:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Refresh Token.")
-  
-  try:
-    token = await session.scalar(select(RefreshTokensModel).where(RefreshTokensModel.token == refresh_token, RefreshTokensModel.user_id == user.id))
-    if not token:
-      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid Refresh Token!")
-    
-    await session.delete(token)
-    await session.commit()
-    return None
-  
-  except SQLAlchemyError as error:
-    print(f"Error while Logout :: {error}")
-    raise HTTPException(500, f"Something went wrong in the server, please try again later.")
-
-async def delete_account(session: AsyncSession, user: UsersModel) -> None:
-  try:
-    current_user = await session.scalar(select(UsersModel).where(UsersModel.id == user.id))
-    if not (current_user):
-      raise HTTPException(404, f"User Not Found!")
-    
-    await session.delete(user)
-    await session.commit()
-    return None
-  except SQLAlchemyError as err:
-    await session.rollback()
-    print("Error in deleting user profile.", err)
-    raise HTTPException(500, f"Something went wrong in the server, please try again later.")
-
 async def change_password(session: AsyncSession, user: UsersModel, body: ChangePasswordSchema):
   if not re.fullmatch(PASSWORD_REGEX, body.new_password.strip()) or not re.fullmatch(PASSWORD_REGEX, body.old_password):
-  # if not re.fullmatch(PASSWORD_REGEX, body.new_password.strip()):
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=PASSWORD_RULE_MESSAGE)
 
   if not verify_password(body.old_password, user.password):
@@ -321,4 +290,49 @@ async def change_password(session: AsyncSession, user: UsersModel, body: ChangeP
     await session.rollback()
     print(f"Error while changing password :: {err}")
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong, try again later.")
+
+async def logout(refresh_token: str, session: AsyncSession, user: UsersModel):
+  if not refresh_token:
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Refresh Token.")
   
+  try:
+    token = await session.scalar(select(RefreshTokensModel).where(RefreshTokensModel.token == refresh_token, RefreshTokensModel.user_id == user.id))
+    if not token:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid Refresh Token!")
+    
+    await session.delete(token)
+    await session.commit()
+    return None
+  
+  except SQLAlchemyError as error:
+    print(f"Error while Logout :: {error}")
+    raise HTTPException(500, f"Something went wrong in the server, please try again later.")
+
+async def logout_from_other_devices(refresh_token: str, session: AsyncSession, user: UsersModel):
+  if not refresh_token:
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Refresh Token.")
+  
+  try:
+    await session.execute(delete(RefreshTokensModel).where(RefreshTokensModel.token != refresh_token, RefreshTokensModel.user_id == user.id))
+    await session.commit()
+    return None
+
+  except SQLAlchemyError as err:
+    print(f"Error while Logging out from other devices :: {err}")
+    await session.rollback()
+    raise HTTPException(500, f"Something went wrong in the server, please try again later.")
+
+async def delete_account(session: AsyncSession, user: UsersModel) -> None:
+  try:
+    current_user = await session.scalar(select(UsersModel).where(UsersModel.id == user.id))
+    if not (current_user):
+      raise HTTPException(404, f"User Not Found!")
+    
+    await session.delete(user)
+    await session.commit()
+    return None
+  except SQLAlchemyError as err:
+    await session.rollback()
+    print("Error in deleting user profile.", err)
+    raise HTTPException(500, f"Something went wrong in the server, please try again later.")
+
