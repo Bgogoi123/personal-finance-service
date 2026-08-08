@@ -11,7 +11,7 @@ async def adjust_user_balance(session: AsyncSession, user_id: str, amount_delta:
     Uses row-level locking (SELECT FOR UPDATE) to ensure race-condition safety.
   """
 
-  # Fetch the balance row an lock it for this transaction.
+  # Fetch the balance row and lock it for this transaction.
   stmt = select(BalanceModel).where(BalanceModel.user_id == user_id).with_for_update()
   balance = await session.scalar(stmt)
 
