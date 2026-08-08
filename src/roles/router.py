@@ -10,6 +10,13 @@ from src.utils.auth.authentication import allow_admin
 roles_routes = APIRouter(prefix="/roles")
 session_dependency = Annotated[AsyncSession, Depends(get_db)]
 
+# Public Route :: Get roles - excluding admins
+@roles_routes.get("/", response_model=List[RolesResponseSchema], status_code=status.HTTP_200_OK )
+async def get_roles(session: session_dependency):
+  return await controller.get_roles(session)
+
+# Protected Routes
+# Create role
 @roles_routes.post(
     "/add",
     response_model=RolesResponseSchema,
@@ -22,11 +29,6 @@ async def create_role(
     user: UsersModel = Depends(allow_admin)
 ): 
   return await controller.create_role(body, session)
-
-#  Get roles - excluding admins
-@roles_routes.get("/", response_model=List[RolesResponseSchema], status_code=status.HTTP_200_OK )
-async def get_roles(session: session_dependency):
-  return await controller.get_roles(session)
 
 #  Get All Roles - including admins
 @roles_routes.get("/all", response_model=List[RolesResponseSchema], status_code=status.HTTP_200_OK )

@@ -6,12 +6,12 @@ from src.auth import controller
 from src.utils.db import get_db
 from src.auth.schema import ChangePasswordSchema, LoginSchema, UserCreateSchema,UserResponseSchema, UserUpdateSchema
 from src.auth.models import UsersModel
-from src.utils.auth.authentication import is_authenticated
+from src.utils.auth.authentication import allow_all
 
 auth_routes = APIRouter(prefix="/auth")
 session_dependency = Annotated[AsyncSession, Depends(get_db)]
-user_dependency = Annotated[UsersModel, Depends(is_authenticated)]
 
+# Public Routes
 @auth_routes.post("/sign-up", response_model=UserResponseSchema, response_model_exclude={"updated_at"}, status_code=status.HTTP_201_CREATED)
 async def user_registration(body: UserCreateSchema, session: session_dependency):
   return await controller.user_registration(body, session)
@@ -27,39 +27,40 @@ async def renew_access_token(session: session_dependency, request: Request, refr
   
   return await controller.renew_access_token(refresh_token, user_id, session, request)
 
+# Protected Routes
 @auth_routes.get(
     "/profile/{id}",
     response_model=UserResponseSchema,
     response_model_exclude={"updated_at"},
     status_code=status.HTTP_200_OK
   )
-async def get_profile_info(session: session_dependency, user: user_dependency):
+async def get_profile_info(session: session_dependency, user: UsersModel = Depends(allow_all)):
   return await controller.get_profile_info(session, user)
 
 @auth_routes.put("/update/{id}", response_model=UserResponseSchema, status_code=status.HTTP_201_CREATED)
-async def update_profile(body: UserUpdateSchema, session: session_dependency, user: user_dependency):
+async def update_profile(body: UserUpdateSchema, session: session_dependency, user: UsersModel = Depends(allow_all)):
   return await controller.update_profile(body, session, user)
 
 @auth_routes.put("/change-password", status_code=status.HTTP_202_ACCEPTED)
-async def change_password(session: session_dependency, user: user_dependency, body: ChangePasswordSchema):
+async def change_password(body: ChangePasswordSchema, session: session_dependency, user: UsersModel = Depends(allow_all), ):
   return await controller.change_password(session, user, body)
 
 @auth_routes.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(session: session_dependency, user: user_dependency, refresh_token: str = Header(None, alias="Refresh-Token")):
+async def logout(session: session_dependency, user: UsersModel = Depends(allow_all), refresh_token: str = Header(None, alias="Refresh-Token")):
   if not refresh_token:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Authorization Header Layout.")
   
   return await controller.logout(refresh_token, session, user)
 
 @auth_routes.post("/logout-other-devices", status_code=status.HTTP_204_NO_CONTENT)
-async def logout_from_other_devices(session: session_dependency, user: user_dependency, refresh_token: str = Header(None, alias="Refresh-Token")):
+async def logout_from_other_devices(session: session_dependency, user: UsersModel = Depends(allow_all), refresh_token: str = Header(None, alias="Refresh-Token")):
   if not refresh_token:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Authorization Header Layout.")
   
   return await controller.logout_from_other_devices(refresh_token, session, user)
 
 @auth_routes.delete("/delete/{id}", response_model=None, status_code=status.HTTP_204_NO_CONTENT)
-async def delete_account(session: session_dependency, user: user_dependency):
+async def delete_account(session: session_dependency, user: UsersModel = Depends(allow_all)):
   return await controller.delete_account(session, user)
 
 
