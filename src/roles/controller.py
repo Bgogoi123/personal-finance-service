@@ -12,7 +12,7 @@ async def create_role(body: RolesCreateSchema, session: AsyncSession) -> RolesRe
   if not body.name.strip() or body.name.strip() == "":
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Role Name.")
 
-  role = RolesModel(name = body.name)
+  role = RolesModel(name = body.name, type = body.type)
 
   try:  
     session.add(role) # Moves the object data to the pending state, until the next flush, at which point they will move to the persistent state.
@@ -25,7 +25,20 @@ async def create_role(body: RolesCreateSchema, session: AsyncSession) -> RolesRe
     print("Error in creating role: ", e)
     raise HTTPException(500, "Something went wrong on the server, please try again later.")
 
-# Get all roles
+# Get all roles - except admin roles.
+async def get_roles(session: AsyncSession) -> List[RolesResponseSchema]:
+  try:
+    roles = await session.scalars(select(RolesModel).where(RolesModel.type == "default"))
+
+    if not roles:
+      raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No roles found.")
+    
+    return roles
+  except SQLAlchemyError as err:
+    print("Error while fetching all roles :: ", err )
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong in the server. Please try again later.")
+  
+#  Get All Roles - including admin roles.
 async def get_all_roles(session: AsyncSession) -> List[RolesResponseSchema]:
   try:
     roles = await session.scalars(select(RolesModel))
@@ -37,7 +50,7 @@ async def get_all_roles(session: AsyncSession) -> List[RolesResponseSchema]:
   except SQLAlchemyError as err:
     print("Error while fetching all roles :: ", err )
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong in the server. Please try again later.")
-  
+
 # Get a role by ID
 async def get_roles_by_id(id: str, session: AsyncSession) -> RolesResponseSchema:
   if not id:

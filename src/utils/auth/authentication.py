@@ -2,6 +2,7 @@ from fastapi import HTTPException, Request, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import joinedload
 from sqlalchemy import select
 from datetime import datetime, timedelta, timezone
 import jwt
@@ -32,7 +33,12 @@ async def is_authenticated(
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Access Token!")
 
   user_id = data.get("_id")
-  user = await session.scalar(select(UsersModel).where(UsersModel.id == user_id))
+  # user = await session.scalar(select(UsersModel).where(UsersModel.id == user_id))
+
+  # 'Joinload' ensures user.role is loaded in 1 query. 
+  # SQL Equivalent is: "SELECT users.*, roles.* FROM users LEFT OUTER JOIN roles ON roles.id = users.role_id;"
+  stmt = select(UsersModel).options(joinedload(UsersModel.role)).where(UsersModel.id == user_id)
+  user = await session.scalar(stmt)
 
   if not user:
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You are Not Authorized!")
@@ -123,3 +129,16 @@ async def create_auth_tokens(user_id: str, session: AsyncSession, request: Reque
     await session.rollback()
     print(f"Error while saving Refresh token :: {error}")
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong on the server, please try again later.")
+
+class RoleChecker:
+  def __init__(self, allowed_roles: list[str]):
+    self.allowed_roles = allowed_roles
+
+  async def __call__(self, user: UsersModel = Depends(is_authenticated)) -> UsersModel:
+    # Check if the user's role type matches allowed roles
+    if user.role.type not in self.allowed_roles:
+      raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to perform this action.")
+    return user
+
+allow_admin = RoleChecker(["admin"])
+allow_all = RoleChecker(["admin", "default"])
