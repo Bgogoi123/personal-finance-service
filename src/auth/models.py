@@ -31,13 +31,13 @@ class UsersModel(Base):
         "roles.id", ondelete="RESTRICT", onupdate="CASCADE"), nullable=False)
 
     # Relationships
-    role = relationship("RolesModel", back_populates="users")  # Current
+    role = relationship("RolesModel", back_populates="user")  # Current
 
-    balance = relationship("BalanceModel", back_populates="users")
-    category = relationship("CategoriesModel", back_populates="users")
+    balance = relationship("BalanceModel", back_populates="user")
+    category = relationship("CategoriesModel", back_populates="user")
     payment_option = relationship(
-        "PaymentOptionsModel", back_populates="users")
-    transaction = relationship("TransactionsModel", back_populates="users")
+        "PaymentOptionsModel", back_populates="user")
+    transactions = relationship("TransactionsModel", back_populates="user")
 
     # SQLAlchemy's 'relationship()' is an Object-Relational Mapping (ORM) abstraction.
     # It tells SQLAlchemy to link Python object properties together based on the underlying Foreign Key constraint.

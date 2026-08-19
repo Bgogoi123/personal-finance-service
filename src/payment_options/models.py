@@ -29,7 +29,7 @@ class PaymentOptionsModel(Base):
 
     # Relationship
     user = relationship(
-        "UsersModel", back_populates="payment_options")  # Current
+        "UsersModel", back_populates="payment_option")  # Current
 
-    transaction = relationship(
-        "TransactionsModel", back_populates="payment_options")
+    transactions = relationship(
+        "TransactionsModel", back_populates="payment_option")
