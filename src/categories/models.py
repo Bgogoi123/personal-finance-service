@@ -26,7 +26,7 @@ class CategoriesModel(Base):
         "users.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
 
     # Relationships
-    user = relationship("UsersModel", back_populates="categories")  # Current
+    user = relationship("UsersModel", back_populates="category")  # Current
 
     transactions = relationship(
-        "TransactionsModel", back_populates="categories")
+        "TransactionsModel", back_populates="category")

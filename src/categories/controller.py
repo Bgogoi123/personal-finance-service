@@ -4,9 +4,22 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import select
 from typing import List
 from datetime import datetime, timezone
+import hashlib
 from src.auth.models import UsersModel
 from src.categories.schema import CategoryCreateSchema, CategoryResponseSchema, CategoryUpdateSchema
 from src.categories.models import CategoriesModel
+
+DEFAULT_CATEGORY_COLORS = [
+    "EAE4E9", "FFF1E6", "FDE2E4", "FAD2E1", "E2ECE9",
+    "BEE1E6", "F0EFEB", "DFE7FD", "CDDAFD", "F0D9FF",
+]
+
+
+def get_deterministic_color(name: str) -> str:
+    """Same category name always gets the same color."""
+    hash_val = int(hashlib.md5(name.lower().encode()).hexdigest(), 16)
+    return DEFAULT_CATEGORY_COLORS[hash_val % len(DEFAULT_CATEGORY_COLORS)]
+
 
 # Create a Category
 
