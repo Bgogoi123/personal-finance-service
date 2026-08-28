@@ -4,19 +4,12 @@ from typing import Annotated, List
 
 from src.users import controller
 from src.utils.db import get_db
-from src.auth.schema import ChangePasswordSchema, UserCreateSchema, UserResponseSchema, UserUpdateSchema
+from src.auth.schema import ChangePasswordSchema, UserResponseSchema, UserUpdateSchema
 from src.auth.models import UsersModel
 from src.utils.auth.authentication import allow_all, allow_admin
 
 user_routes = APIRouter(prefix="/users")
 session_dependency = Annotated[AsyncSession, Depends(get_db)]
-
-# Public Routes
-
-
-@user_routes.post("/sign-up", response_model=UserResponseSchema, response_model_exclude={"updated_at"}, status_code=status.HTTP_201_CREATED)
-async def user_registration(body: UserCreateSchema, session: session_dependency):
-    return await controller.user_registration(body, session)
 
 
 # Protected Routes

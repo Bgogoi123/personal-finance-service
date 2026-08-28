@@ -14,6 +14,10 @@ session_dependency = Annotated[AsyncSession, Depends(get_db)]
 
 # Public Routes
 
+@auth_routes.post("/sign-up", response_model=UserResponseSchema, response_model_exclude={"updated_at"}, status_code=status.HTTP_201_CREATED)
+async def user_registration(body: UserCreateSchema, session: session_dependency):
+    return await controller.user_registration(body, session)
+
 
 @auth_routes.post("/login", status_code=status.HTTP_202_ACCEPTED)
 async def user_login(body: LoginSchema, session: session_dependency, request: Request):
