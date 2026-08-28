@@ -32,6 +32,7 @@ async def get_or_create(
     new_row = model(**{name_field: normalized,
                     "user_id": user_id, **extra_defaults})
     session.add(new_row)
+    print(f"CREATED IN TABLE {model} :: {normalized}")
     try:
         await session.flush()
     except IntegrityError:

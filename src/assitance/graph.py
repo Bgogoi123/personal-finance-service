@@ -1,4 +1,3 @@
-from fastapi import HTTPException, status
 from langgraph.graph import StateGraph, START, END
 from langchain_groq import ChatGroq
 from langgraph.checkpoint.memory import MemorySaver
@@ -62,6 +61,9 @@ def extractor(state: GraphState):
 
     prompt = EXTRACTION_PROMPT.format(user_input=full_conversation)
     result: ExtractedTransactionSchema = structured_llm.invoke(prompt)
+
+    print("RESULT :: SCHEMA :: ", result)
+
     return {"extracted": result, "conversation_history": [state.user_input]}
 
 
@@ -69,40 +71,12 @@ def route_after_extraction(state: GraphState):
     return "create_transaction" if state.extracted.is_complete else "ask_again"
 
 
-# async def create_transaction_node(state: GraphState, config: RunnableConfig):
-#     session: AsyncSession = config["configurable"]["session"]
-#     user = config["configurable"]["user"]
-#     data = state.extracted
-
-#     print(".... TODO: Create transaction API Call..", data)
-
-#     try:
-#         # if category exists, add its id here. else, create a new category and add the new id here.
-#         # ...
-
-#         # if payment option exists, add its id here. else create a new payment option and add the new id here.
-#         # ...
-
-#         # create transaction.
-#         payload = TransactionCreateSchema(
-#             amount=data.amount, category_id="", payment_option_id="", note="", title=data.title, type=data.transaction_type)
-#         transaction = await controller.create_transaction(session, user)
-#     except SQLAlchemyError as err:
-#         await session.rollback()
-#         print(
-#             f"Error while creating transaction through AI assistance :: {err}")
-#         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#                             detail="Something went wrong in the server, please try again later.")
-
-#     # Added expense of 450.0 under 'groceries' (cash)
-#     message = f"Added {data.transaction_type} of {data.amount} under '{data.category}' ({data.payment_option})"
-#     return {"final_response": message}
-
-
 async def create_transaction_node(state: GraphState, config: RunnableConfig):
     session: AsyncSession = config["configurable"]["session"]
     user = config["configurable"]["user"]
     data = state.extracted
+
+    print("extracted :: ", data)
 
     try:
         category_id = await get_or_create(

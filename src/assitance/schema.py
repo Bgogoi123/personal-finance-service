@@ -11,7 +11,8 @@ class ExtractedTransactionSchema(BaseModel):
     transaction_type: str = Field(description="'income' or 'expense'")
     amount: float
     category: str
-    payment_option: str
+    payment_option: str = Field(
+        description="e.g. 'UPI', 'Cash', 'HDFC Credit Card'")
     payment_type: str = Field(
         description="Broad classification of the payment_option, one of: 'Cash', 'Card', 'Digital', 'Bank Transfer', 'Other'"
     )
