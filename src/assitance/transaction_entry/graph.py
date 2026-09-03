@@ -1,5 +1,4 @@
 from langgraph.graph import StateGraph, START, END
-from langchain_groq import ChatGroq
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableConfig
@@ -9,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated, List, Optional
 import operator
 
-from src.utils.settings import settings
-from src.assitance.schema import ExtractedTransactionSchema
+from src.assitance.llm.groq import create_groq_llm_instance
+from src.assitance.transaction_entry.schema import ExtractedTransactionSchema
 from src.transaction import controller
 from src.transaction.schema import TransactionCreateSchema
 from src.utils.db_helper import get_or_create
@@ -18,10 +17,9 @@ from src.categories.models import CategoriesModel
 from src.categories.controller import get_deterministic_color
 from src.payment_options.models import PaymentOptionsModel
 
-assistance_llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.2,
-                          api_key=settings.GROQ_API_KEY)
 
-structured_llm = assistance_llm.with_structured_output(
+llm = create_groq_llm_instance(temperature=0.2)
+structured_llm = llm.with_structured_output(
     ExtractedTransactionSchema)
 
 
