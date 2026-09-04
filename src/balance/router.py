@@ -11,21 +11,57 @@ balance_routes = APIRouter(prefix="/balance")
 session_dependency = Annotated[AsyncSession, Depends(get_db)]
 
 # create balance per each user
-@balance_routes.post("/add", response_model=BalanceResponseSchema, status_code=status.HTTP_201_CREATED)
-async def create_balance(body: BalanceCreateSchema, session: session_dependency, user: UsersModel = Depends(allow_all)):
-  return await controller.create_balance(body, session, user)
+
+
+@balance_routes.post(
+    "/add",
+    response_model=BalanceResponseSchema,
+    status_code=status.HTTP_201_CREATED
+)
+async def create_balance(
+    body: BalanceCreateSchema,
+    session: session_dependency,
+    user: UsersModel = Depends(allow_all)
+):
+    return await controller.create_balance(body, session, user)
 
 # get balance for current user
-@balance_routes.get("/", response_model=BalanceResponseSchema, status_code=status.HTTP_200_OK)
-async def get_current_user_balance(session: session_dependency, user: UsersModel = Depends(allow_all) ):
-  return await controller.get_current_user_balance(session, user)
+
+
+@balance_routes.get(
+    "/",
+    response_model=BalanceResponseSchema,
+    status_code=status.HTTP_200_OK
+)
+async def get_current_user_balance(
+    session: session_dependency,
+    user: UsersModel = Depends(allow_all)
+):
+    return await controller.get_current_user_balance(session, user)
 
 # update balance by id for current user
-@balance_routes.put("/update/{id}", response_model=BalanceResponseSchema, status_code=status.HTTP_201_CREATED)
-async def update_balance_by_id(id: str, body: BalanceCreateSchema,  session: session_dependency, user: UsersModel = Depends(allow_all) ):
-  return await controller.update_balance_by_id(id, body, session, user)
+
+
+@balance_routes.put(
+    "/update/{id}",
+    response_model=BalanceResponseSchema,
+    status_code=status.HTTP_201_CREATED
+)
+async def update_balance_by_id(
+    id: str,
+    body: BalanceCreateSchema,
+    session: session_dependency,
+    user: UsersModel = Depends(allow_all)
+):
+    return await controller.update_balance_by_id(id, body, session, user)
 
 # delete balance by id for current user
+
+
 @balance_routes.delete("/delete/{id}")
-async def delete_balance_by_id(id: str, session: session_dependency, user: UsersModel = Depends(allow_all) ):
-  return await controller.delete_balance_by_id(id, session, user)
+async def delete_balance_by_id(
+    id: str,
+    session: session_dependency,
+    user: UsersModel = Depends(allow_all)
+):
+    return await controller.delete_balance_by_id(id, session, user)

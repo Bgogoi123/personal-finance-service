@@ -1,6 +1,6 @@
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
-from langchain_core.prompts import PromptTemplate
+
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import SQLAlchemyError
@@ -8,8 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated, List, Optional
 import operator
 
-from src.assitance.llm.groq import create_groq_llm_instance
-from src.assitance.transaction_entry.schema import ExtractedTransactionSchema
+from src.assistance.llm.groq import create_groq_llm_instance
+from src.assistance.transaction_entry.schema import ExtractedTransactionSchema
+from src.assistance.prompts import TRANSACTION_EXTRACTION_PROMPT
 from src.transaction import controller
 from src.transaction.schema import TransactionCreateSchema
 from src.utils.db_helper import get_or_create
@@ -30,34 +31,11 @@ class GraphState(BaseModel):
     final_response: Optional[str] = None
 
 
-EXTRACTION_PROMPT = PromptTemplate(
-    template="""
-        You are a financial assistant extracting transaction details.
-
-        Below is the conversation so far (it may span multiple messages, where later
-        messages answer questions raised by earlier ones). Treat it as one combined input.
-
-        Required fields: title, transaction_type (income/expense), amount, category, payment_option.
-
-        If title is missing, add one based on the context of the message.
-        If anything required is missing, except title, set is_complete to False and write a short, polite
-        clarifying question in missing_info_message asking only for what's missing.
-
-        If everything is present, set is_complete to True, leave missing_info_message null,
-        and fill in all fields. Always copy the user's original message into `note`.
-            
-        Conversation so far:
-        {user_input}
-        """,
-    input_variables=["user_input"]
-)
-
-
 def extractor(state: GraphState):
     full_conversation = "\n".join(
         state.conversation_history + [state.user_input])
 
-    prompt = EXTRACTION_PROMPT.format(user_input=full_conversation)
+    prompt = TRANSACTION_EXTRACTION_PROMPT.format(user_input=full_conversation)
     result: ExtractedTransactionSchema = structured_llm.invoke(prompt)
 
     print("RESULT :: SCHEMA :: ", result)
@@ -103,10 +81,12 @@ async def create_transaction_node(state: GraphState, config: RunnableConfig):
         print(
             f"Error while creating transaction through AI assistance :: {err}")
         return {
-            "final_response": "Something went wrong while saving your transaction. Please try again."
+            "final_response": """Something went wrong while
+            saving your transaction. Please try again."""
         }
 
-    message = f"Added {data.transaction_type} of {data.amount} under '{data.category}' ({data.payment_option})"
+    message = (f"Added {data.transaction_type} of {data.amount} "
+               f"under '{data.category}' ({data.payment_option})")
     return {"final_response": message}
 
 

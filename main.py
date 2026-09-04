@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from src.assitance.router import assistance_routes
+from src.assistance.router import assistance_routes
 from src.auth.router import auth_routes
 from src.balance.router import balance_routes
 from src.categories.router import categories_routes

@@ -41,7 +41,8 @@ async def is_authenticated(
     # user = await session.scalar(select(UsersModel).where(UsersModel.id == user_id))
 
     # 'Joinedload' ensures user.role is loaded in 1 query.
-    # SQL Equivalent is: "SELECT users.*, roles.* FROM users LEFT OUTER JOIN roles ON roles.id = users.role_id;"
+    # SQL Equivalent is:
+    # "SELECT users.*, roles.* FROM users LEFT OUTER JOIN roles ON roles.id = users.role_id;"
     stmt = select(UsersModel).options(joinedload(
         UsersModel.role)).where(UsersModel.id == user_id)
     user = await session.scalar(stmt)
@@ -53,24 +54,37 @@ async def is_authenticated(
     return user
 
 
-async def create_auth_tokens(user_id: str, session: AsyncSession, request: Request, is_renew: bool = False, refresh_token: str = None, device_details: dict = None) -> dict:
+async def create_auth_tokens(
+    user_id: str,
+    session: AsyncSession,
+    request: Request,
+    is_renew: bool = False,
+    refresh_token: str = None,
+) -> dict:
     user = await session.scalar(select(UsersModel).where(UsersModel.id == user_id))
 
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"Invalid User ID!")
+            status_code=status.HTTP_404_NOT_FOUND, detail="Invalid User ID!")
 
     # Create Access Token
     access_token_expiry_time = datetime.now(
         timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRY_MINUTES)
-    access_token = jwt.encode({"_id": str(user.id), "username": user.username,
-                              "exp": access_token_expiry_time}, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    access_token = jwt.encode(
+        {
+            "_id": str(user.id), "username": user.username,
+            "exp": access_token_expiry_time
+        },
+        settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
 
     # Renew Access Token
     if is_renew and refresh_token:
         # check if refresh_token is valid.
         try:
-            token = await session.scalar(select(RefreshTokensModel).where(RefreshTokensModel.token == refresh_token))
+            token = await session.scalar(select(RefreshTokensModel).where(
+                RefreshTokensModel.token == refresh_token
+            ))
 
             if not token:
                 raise HTTPException(
@@ -80,22 +94,33 @@ async def create_auth_tokens(user_id: str, session: AsyncSession, request: Reque
                 token.expires_at = token.expires_at.replace(
                     tzinfo=timezone.utc)
             elif token.expires_at < datetime.now(timezone.utc):
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                                    detail="Refresh Token Expired! Please login to continue.")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Refresh Token Expired! Please login to continue."
+                )
             else:
                 return {"access_token": access_token}
 
         except SQLAlchemyError as error:
             print(
                 f"Error while fetching Refresh token with token: {refresh_token} ::: {error}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                                detail="Something went wrong on the server, please try again later.")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Something went wrong on the server, please try again later."
+            )
 
     # Create Refresh Token only if is_renew == False.
     refresh_token_expiry_days = datetime.now(
         timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRY_DAYS)
-    refresh_token = jwt.encode({"_id": str(user.id), "username": user.username, "exp": refresh_token_expiry_days,
-                               "refresh": True}, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    refresh_token = jwt.encode(
+        {
+            "_id": str(user.id),
+            "username": user.username,
+            "exp": refresh_token_expiry_days,
+            "refresh": True
+        },
+        settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
 
     # Destructure Client's Device Details
     client_ip = request.client.host if request.client else "Unknown"
@@ -117,8 +142,16 @@ async def create_auth_tokens(user_id: str, session: AsyncSession, request: Reque
 
     refresh_token_expiry_days = datetime.now(
         timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRY_DAYS)
-    refresh_token = jwt.encode({"_id": str(user.id), "username": user.username, "exp": refresh_token_expiry_days,
-                               "refresh": True}, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    refresh_token = jwt.encode(
+        {
+            "_id": str(user.id),
+            "username": user.username,
+            "exp": refresh_token_expiry_days,
+            "refresh": True
+        },
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM
+    )
 
     # store at refresh_tokens table.
     try:
@@ -142,7 +175,11 @@ async def create_auth_tokens(user_id: str, session: AsyncSession, request: Reque
         else:
             # Create a completely new session row
             token = RefreshTokensModel(
-                token=refresh_token, expires_at=refresh_token_expiry_days, device_info=client_details, user_id=user_id)
+                token=refresh_token,
+                expires_at=refresh_token_expiry_days,
+                device_info=client_details,
+                user_id=user_id
+            )
             session.add(token)
             await session.commit()
             await session.refresh(token)
@@ -151,8 +188,10 @@ async def create_auth_tokens(user_id: str, session: AsyncSession, request: Reque
     except SQLAlchemyError as error:
         await session.rollback()
         print(f"Error while saving Refresh token :: {error}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail="Something went wrong on the server, please try again later.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Something went wrong on the server, please try again later."
+        )
 
 
 class RoleChecker:
@@ -162,8 +201,10 @@ class RoleChecker:
     async def __call__(self, user: UsersModel = Depends(is_authenticated)) -> UsersModel:
         # Check if the user's role type matches allowed roles
         if user.role.type not in self.allowed_roles:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                                detail="You do not have permission to perform this action.")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to perform this action."
+            )
         return user
 
 

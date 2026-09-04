@@ -7,11 +7,13 @@ from datetime import datetime, timezone
 import jwt
 
 from src.roles.models import RolesModel
-from src.utils.auth.passwords import verify_password
 from src.utils.settings import settings
 from src.utils.auth.authentication import create_auth_tokens
 from src.utils.auth.passwords import get_hashed_password, verify_password
-from src.auth.schema import LoginSchema, RenewTokenResponseSchema, UserCreateSchema, UserResponseSchema
+from src.auth.schema import (
+    LoginSchema, RenewTokenResponseSchema,
+    UserCreateSchema, UserResponseSchema
+)
 from src.auth.models import UsersModel, RefreshTokensModel
 
 USERNAME_REGEX = r"^[a-zA-Z0-9_]+$"
@@ -19,7 +21,10 @@ EMAIL_REGEX = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 PASSWORD_REGEX = "^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$"
 PHONE_REGEX = r"^\+?[0-9\s\-()]{7,15}$"
 
-PASSWORD_RULE_MESSAGE = "Password should be atleast 8 characters in length, atleast one lower case letter, atleast one upper case letter, atleast one digit, atleast one special character (#?!@$%^&*-)."
+PASSWORD_RULE_MESSAGE = (
+    "Password should be atleast 8 characters in length, "
+    "atleast one lower case letter, atleast one upper case letter, "
+    "atleast one digit, atleast one special character (#?!@$%^&*-).")
 
 
 async def user_registration(body: UserCreateSchema, session: AsyncSession) -> UserResponseSchema:
@@ -39,7 +44,9 @@ async def user_registration(body: UserCreateSchema, session: AsyncSession) -> Us
 
     if not re.fullmatch(USERNAME_REGEX, user_name):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Invalid Username! Must contain only letters (uppercase or lowercase), numbers, and underscores (_)")
+                            detail=(
+                                "Invalid Username! Must contain only letters "
+                                "(uppercase or lowercase), numbers, and underscores (_)"))
 
     if not re.fullmatch(PASSWORD_REGEX, password):
         raise HTTPException(
@@ -47,7 +54,9 @@ async def user_registration(body: UserCreateSchema, session: AsyncSession) -> Us
 
     # Validate Role.
     try:
-        role_exists = await session.scalar(select(RolesModel.id).where(RolesModel.id == body.role_id))
+        role_exists = await session.scalar(
+            select(RolesModel.id).where(RolesModel.id == body.role_id)
+        )
 
     except SQLAlchemyError as err:
         print(f"Database error during role check: {err}")
@@ -155,13 +164,18 @@ async def user_login(body: LoginSchema, session: AsyncSession, request: Request)
             status_code=status.HTTP_400_BAD_REQUEST, detail=PASSWORD_RULE_MESSAGE)
 
     try:
-        user = await session.scalar(select(UsersModel).where(getattr(UsersModel, key) == identifier))
+        user = await session.scalar(select(UsersModel).where(
+            getattr(UsersModel, key) == identifier)
+        )
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail=f"Invalid {key} or password.")
 
         # Delete expired tokens for the current user
-        await session.execute(delete(RefreshTokensModel).where(RefreshTokensModel.user_id == user.id, RefreshTokensModel.expires_at < datetime.now(timezone.utc)))
+        await session.execute(delete(RefreshTokensModel).where(
+            RefreshTokensModel.user_id == user.id,
+            RefreshTokensModel.expires_at < datetime.now(timezone.utc))
+        )
         await session.commit()
 
         if not verify_password(body.password, user.password):
@@ -177,7 +191,9 @@ async def user_login(body: LoginSchema, session: AsyncSession, request: Request)
                             detail="Something went wrong on the server, please try again later.")
 
 
-async def renew_access_token(refresh_token: str, user_id: str, session: AsyncSession, request: Request) -> RenewTokenResponseSchema:
+async def renew_access_token(
+    refresh_token: str, user_id: str, session: AsyncSession, request: Request
+) -> RenewTokenResponseSchema:
     try:
         if user_id:
             # Check if user actually exist.
@@ -188,7 +204,9 @@ async def renew_access_token(refresh_token: str, user_id: str, session: AsyncSes
                     status_code=status.HTTP_404_NOT_FOUND, detail="User Not Found.")
 
             # Delete all expired tokens for this user from DB.
-            await session.execute(delete(RefreshTokensModel).where(RefreshTokensModel.user_id == user_id, RefreshTokensModel.expires_at < datetime.now(timezone.utc)))
+            await session.execute(delete(RefreshTokensModel).where(
+                RefreshTokensModel.user_id == user_id,
+                RefreshTokensModel.expires_at < datetime.now(timezone.utc)))
             await session.commit()
 
         # Cryptographically verify the refresh token
@@ -207,7 +225,12 @@ async def renew_access_token(refresh_token: str, user_id: str, session: AsyncSes
                                 detail="Token doesn't belong to the current user.")
 
         # Check if token exist in DB
-        db_token = await session.scalar(select(RefreshTokensModel).where(RefreshTokensModel.token == refresh_token, RefreshTokensModel.user_id == user.id))
+        db_token = await session.scalar(
+            select(RefreshTokensModel).where(
+                RefreshTokensModel.token == refresh_token,
+                RefreshTokensModel.user_id == user.id
+            )
+        )
         if not db_token:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                 detail="Refresh token has been revoked or logged out.")
@@ -238,7 +261,10 @@ async def logout(refresh_token: str, session: AsyncSession, user: UsersModel):
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Refresh Token.")
 
     try:
-        token = await session.scalar(select(RefreshTokensModel).where(RefreshTokensModel.token == refresh_token, RefreshTokensModel.user_id == user.id))
+        token = await session.scalar(select(RefreshTokensModel).where(
+            RefreshTokensModel.token == refresh_token,
+            RefreshTokensModel.user_id == user.id)
+        )
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Invalid Refresh Token!")
@@ -250,7 +276,7 @@ async def logout(refresh_token: str, session: AsyncSession, user: UsersModel):
     except SQLAlchemyError as error:
         print(f"Error while Logout :: {error}")
         raise HTTPException(
-            500, f"Something went wrong in the server, please try again later.")
+            500, "Something went wrong in the server, please try again later.")
 
 
 async def logout_from_other_devices(refresh_token: str, session: AsyncSession, user: UsersModel):
@@ -259,7 +285,10 @@ async def logout_from_other_devices(refresh_token: str, session: AsyncSession, u
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Refresh Token.")
 
     try:
-        await session.execute(delete(RefreshTokensModel).where(RefreshTokensModel.token != refresh_token, RefreshTokensModel.user_id == user.id))
+        await session.execute(delete(RefreshTokensModel).where(
+            RefreshTokensModel.token != refresh_token,
+            RefreshTokensModel.user_id == user.id)
+        )
         await session.commit()
         return None
 
@@ -267,4 +296,4 @@ async def logout_from_other_devices(refresh_token: str, session: AsyncSession, u
         print(f"Error while Logging out from other devices :: {err}")
         await session.rollback()
         raise HTTPException(
-            500, f"Something went wrong in the server, please try again later.")
+            500, "Something went wrong in the server, please try again later.")

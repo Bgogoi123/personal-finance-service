@@ -43,7 +43,11 @@ async def get_user_info(session: AsyncSession, user: UsersModel) -> UserResponse
                             detail="Something went wrong in the server. Please try again later.")
 
 
-async def update_user(body: UserUpdateSchema, session: AsyncSession, user: UsersModel) -> UserResponseSchema:
+async def update_user(
+        body: UserUpdateSchema,
+        session: AsyncSession,
+        user: UsersModel
+) -> UserResponseSchema:
     current_user = await session.scalar(select(UsersModel).where(UsersModel.id == user.id))
     if not current_user:
         raise HTTPException(
@@ -51,7 +55,9 @@ async def update_user(body: UserUpdateSchema, session: AsyncSession, user: Users
 
     # Role validation
     if body.role_id is not None:
-        current_user_role = await session.scalar(select(RolesModel).where(RolesModel.id == body.role_id))
+        current_user_role = await session.scalar(
+            select(RolesModel).where(RolesModel.id == body.role_id)
+        )
         if not current_user_role:
             raise HTTPException(
                 atus_code=status.HTTP_400_BAD_REQUEST, detail="Role ID Doesn't Exist.")
@@ -75,7 +81,10 @@ async def update_user(body: UserUpdateSchema, session: AsyncSession, user: Users
 
     existing_conflict = None
     if clauses:
-        existing_conflict = await session.scalar(select(UsersModel).where(UsersModel.id != user.id, or_(*clauses)))
+        existing_conflict = await session.scalar(
+            select(UsersModel)
+            .where(UsersModel.id != user.id, or_(*clauses))
+        )
 
     if existing_conflict:
         if body.username and existing_conflict.username == body.username:
@@ -107,14 +116,27 @@ async def update_user(body: UserUpdateSchema, session: AsyncSession, user: Users
             status_code=500, detail="Failed to update profile.")
 
 
-async def change_password(session: AsyncSession, user: UsersModel, body: ChangePasswordSchema):
-    if not re.fullmatch(PASSWORD_REGEX, body.new_password.strip()) or not re.fullmatch(PASSWORD_REGEX, body.old_password):
+async def change_password(
+        session: AsyncSession,
+        user: UsersModel,
+        body: ChangePasswordSchema
+):
+    if (not re.fullmatch(
+        PASSWORD_REGEX,
+        body.new_password.strip()
+    ) or not re.fullmatch(
+        PASSWORD_REGEX,
+        body.old_password
+    )
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=PASSWORD_RULE_MESSAGE)
 
     if not verify_password(body.old_password, user.password):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Please enter the Correct Old Password.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please enter the Correct Old Password."
+        )
 
     hashed_password = get_hashed_password(body.new_password)
 
@@ -133,15 +155,17 @@ async def change_password(session: AsyncSession, user: UsersModel, body: ChangeP
     except SQLAlchemyError as err:
         await session.rollback()
         print(f"Error while changing password :: {err}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail="Something went wrong, try again later.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Something went wrong, try again later."
+        )
 
 
 async def delete_user(session: AsyncSession, user: UsersModel) -> None:
     try:
         current_user = await session.scalar(select(UsersModel).where(UsersModel.id == user.id))
         if not (current_user):
-            raise HTTPException(404, f"User Not Found!")
+            raise HTTPException(404, "User Not Found!")
 
         await session.delete(user)
         await session.commit()
@@ -150,4 +174,4 @@ async def delete_user(session: AsyncSession, user: UsersModel) -> None:
         await session.rollback()
         print("Error in deleting user profile.", err)
         raise HTTPException(
-            500, f"Something went wrong in the server, please try again later.")
+            500, "Something went wrong in the server, please try again later.")

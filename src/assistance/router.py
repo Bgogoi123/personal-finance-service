@@ -1,24 +1,27 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
-import datetime
 
 from src.auth.models import UsersModel
 from src.utils.db import get_db
 from src.utils.auth.authentication import allow_all
 
 # Imports for Transaction Assistant
-from src.assitance.transaction_entry.schema import UserMessageSchema
-from src.assitance.transaction_entry.graph import assistance_graph
+from src.assistance.transaction_entry.schema import UserMessageSchema
+from src.assistance.transaction_entry.graph import assistance_graph
 
 # Imports for Summary Generator
-from src.assitance.summary_narrator.schema import SummaryGeneratorPayloadSchema
+# from src.assistance.summary_narrator.schema import SummaryGeneratorPayloadSchema
 
 
 assistance_routes = APIRouter(prefix="/assistance")
 
 
 @assistance_routes.post("/transaction-entry", status_code=status.HTTP_201_CREATED)
-async def run_transaction_assistance(payload: UserMessageSchema, session: AsyncSession = Depends(get_db), user: UsersModel = Depends(allow_all)):
+async def run_transaction_assistance(
+    payload: UserMessageSchema,
+    session: AsyncSession = Depends(get_db),
+    user: UsersModel = Depends(allow_all)
+):
     config = {"configurable": {
               "thread_id": str(user.id),
               "session": session,
@@ -50,7 +53,9 @@ async def run_transaction_assistance(payload: UserMessageSchema, session: AsyncS
 
 
 # -- Top 5 Largest Transactions
-# select category_id, type, amount as top_five_transactions from transactions group by category_id order by top_five_transactions DESC Limit 5;
+# select category_id, type, amount as top_five_transactions
+# from transactions group by category_id order by
+# top_five_transactions DESC Limit 5;
 
 
 # -- Net Balance Change For each date

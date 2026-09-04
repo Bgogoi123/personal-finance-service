@@ -4,7 +4,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List
-from src.transaction.schema import TransactionCreateSchema, TransactionUpdateSchema, TransactionResponseSchema
+from src.transaction.schema import (
+    TransactionCreateSchema,
+    TransactionUpdateSchema,
+    TransactionResponseSchema
+)
 from src.transaction.models import TransactionsModel
 from src.auth.models import UsersModel
 from src.balance.services import adjust_user_balance
@@ -12,10 +16,16 @@ from src.balance.services import adjust_user_balance
 # create transaction
 
 
-async def create_transaction(body: TransactionCreateSchema, session: AsyncSession, user: UsersModel) -> TransactionResponseSchema:
+async def create_transaction(
+        body: TransactionCreateSchema,
+        session: AsyncSession,
+        user: UsersModel
+) -> TransactionResponseSchema:
     if not body.title.strip():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Invalid title provided for the transaction.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid title provided for the transaction."
+        )
 
     transaction = TransactionsModel(
         title=body.title,
@@ -45,34 +55,50 @@ async def create_transaction(body: TransactionCreateSchema, session: AsyncSessio
     except SQLAlchemyError as err:
         await session.rollback()
         print("Error in creating transaction :: ", err)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail="Something went wrong in the server, please try again later.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Something went wrong in the server, please try again later."
+        )
 
 # get all transactions
 
 
-async def get_all_transactions(session: AsyncSession, user: UsersModel) -> List[TransactionResponseSchema]:
+async def get_all_transactions(
+        session: AsyncSession,
+        user: UsersModel
+) -> List[TransactionResponseSchema]:
     try:
-        transactions = await session.scalars(select(TransactionsModel).where(TransactionsModel.user_id == user.id))
+        transactions = await session.scalars(select(TransactionsModel).where(
+            TransactionsModel.user_id == user.id
+        ))
         if not transactions:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="No Transactions Found.")
         return transactions
     except SQLAlchemyError as err:
         print("Error while fetching all transactions :: ", err)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail="Something went wrong at the server, please try again later.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Something went wrong at the server, please try again later."
+        )
 
 # get transaction by id
 
 
-async def get_transaction_by_id(id: str, session: AsyncSession, user: UsersModel) -> TransactionResponseSchema:
+async def get_transaction_by_id(
+    id: str,
+        session: AsyncSession,
+        user: UsersModel
+) -> TransactionResponseSchema:
     if not id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Transaction ID.")
 
     try:
-        transaction = await session.scalar(select(TransactionsModel).where(TransactionsModel.id == id, TransactionsModel.user_id == user.id))
+        transaction = await session.scalar(select(TransactionsModel).where(
+            TransactionsModel.id == id,
+            TransactionsModel.user_id == user.id
+        ))
         if not transaction:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Transaction Details Not Found.")
@@ -80,25 +106,38 @@ async def get_transaction_by_id(id: str, session: AsyncSession, user: UsersModel
 
     except SQLAlchemyError as err:
         print(f"Error while fetching transaction by ID {id} :: {err}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail="Something went wrong at the server, please try again later.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Something went wrong at the server, please try again later."
+        )
 
 # update transaction by id
 
 
-async def update_transaction_by_id(id: str, body: TransactionUpdateSchema, session: AsyncSession, user: UsersModel) -> TransactionResponseSchema:
+async def update_transaction_by_id(
+    id: str,
+        body: TransactionUpdateSchema,
+        session: AsyncSession,
+        user: UsersModel
+) -> TransactionResponseSchema:
     if not id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Transaction ID!")
 
     try:
-        transaction = await session.scalar(select(TransactionsModel).where(TransactionsModel.id == id, TransactionsModel.user_id == user.id))
+        transaction = await session.scalar(select(TransactionsModel).where(
+            TransactionsModel.id == id,
+            TransactionsModel.user_id == user.id
+        ))
         if not transaction:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Transaction Not Found!")
 
         # Calculate and Reverse the old transaction impact.
-        previous_delta = transaction.amount if transaction.type == "income" else -transaction.amount
+        previous_delta = (
+            transaction.amount if transaction.type == "income"
+            else -transaction.amount
+        )
         reversed_balance = -previous_delta
 
         update_data = body.model_dump()
@@ -125,8 +164,10 @@ async def update_transaction_by_id(id: str, body: TransactionUpdateSchema, sessi
     except SQLAlchemyError as error:
         await session.rollback()
         print(f"Error while updating transaction with id {id} :: {error}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail="Something went wrong at the server, please try again later.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Something went wrong at the server, please try again later."
+        )
 
 
 async def delete_transaction_by_id(id: str, session: AsyncSession, user: UsersModel) -> None:
@@ -135,13 +176,19 @@ async def delete_transaction_by_id(id: str, session: AsyncSession, user: UsersMo
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Transaction ID!")
 
     try:
-        transaction = await session.scalar(select(TransactionsModel).where(TransactionsModel.id == id, TransactionsModel.user_id == user.id))
+        transaction = await session.scalar(select(TransactionsModel).where(
+            TransactionsModel.id == id,
+            TransactionsModel.user_id == user.id
+        ))
         if not transaction:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Transaction Not Found!")
 
         # Calculate reversal delta
-        previous_delta = transaction.amount if transaction.type == "income" else -transaction.amount
+        previous_delta = (
+            transaction.amount if transaction.type == "income"
+            else -transaction.amount
+        )
         reversed_balance = -previous_delta
 
         # Adjust balance, then delete row

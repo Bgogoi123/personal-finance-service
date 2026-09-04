@@ -15,7 +15,11 @@ session_dependency = Annotated[AsyncSession, Depends(get_db)]
 # Protected Routes
 
 
-@user_routes.get("/users", response_model=List[UserResponseSchema], status_code=status.HTTP_200_OK)
+@user_routes.get(
+    "/users",
+    response_model=List[UserResponseSchema],
+    status_code=status.HTTP_200_OK
+)
 async def get_all_users(session: session_dependency, _: UsersModel = Depends(allow_admin)):
     return controller.get_all_users(session)
 
@@ -30,16 +34,35 @@ async def get_user_info(session: session_dependency, user: UsersModel = Depends(
     return await controller.get_user_info(session, user)
 
 
-@user_routes.put("/update/{id}", response_model=UserResponseSchema, status_code=status.HTTP_201_CREATED)
-async def update_user(body: UserUpdateSchema, session: session_dependency, user: UsersModel = Depends(allow_all)):
+@user_routes.put(
+    "/update/{id}",
+    response_model=UserResponseSchema,
+    status_code=status.HTTP_201_CREATED
+)
+async def update_user(
+    body: UserUpdateSchema,
+    session: session_dependency,
+        user: UsersModel = Depends(allow_all)
+):
     return await controller.update_user(body, session, user)
 
 
 @user_routes.put("/change-password", status_code=status.HTTP_202_ACCEPTED)
-async def change_password(body: ChangePasswordSchema, session: session_dependency, user: UsersModel = Depends(allow_all), ):
+async def change_password(
+    body: ChangePasswordSchema,
+    session: session_dependency,
+    user: UsersModel = Depends(allow_all),
+):
     return await controller.change_password(session, user, body)
 
 
-@user_routes.delete("/delete/{id}", response_model=None, status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(session: session_dependency, user: UsersModel = Depends(allow_all)):
+@user_routes.delete(
+    "/delete/{id}",
+    response_model=None,
+    status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_user(
+    session: session_dependency,
+    user: UsersModel = Depends(allow_all)
+):
     return await controller.delete_user(session, user)

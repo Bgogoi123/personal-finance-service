@@ -1,18 +1,7 @@
-from langchain_core.prompts import PromptTemplate
-from src.assitance.llm.groq import create_groq_llm_instance
+from src.assistance.llm.groq import create_groq_llm_instance
 
 summary_llm = create_groq_llm_instance(temperature=0.2)
 
-SUMMARY_PROMPT = PromptTemplate(
-    template="""
-      You are a monthly summary narrator for a finance management app.
-
-
-
-
-    """,
-    input_variables=["date"]
-)
 
 # -- Create the transactions table
 # CREATE TABLE transactions (

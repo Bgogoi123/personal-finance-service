@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Annotated, List
+from typing import Annotated
 
 from src.auth import controller
 from src.utils.db import get_db
-from src.auth.schema import ChangePasswordSchema, LoginSchema, UserCreateSchema, UserResponseSchema, UserUpdateSchema
+from src.auth.schema import LoginSchema, UserCreateSchema, UserResponseSchema
 from src.auth.models import UsersModel
-from src.utils.auth.authentication import allow_all, allow_admin
+from src.utils.auth.authentication import allow_all
 
 auth_routes = APIRouter(prefix="/auth")
 session_dependency = Annotated[AsyncSession, Depends(get_db)]
@@ -14,7 +14,12 @@ session_dependency = Annotated[AsyncSession, Depends(get_db)]
 
 # Public Routes
 
-@auth_routes.post("/sign-up", response_model=UserResponseSchema, response_model_exclude={"updated_at"}, status_code=status.HTTP_201_CREATED)
+@auth_routes.post(
+    "/sign-up",
+    response_model=UserResponseSchema,
+    response_model_exclude={"updated_at"},
+    status_code=status.HTTP_201_CREATED
+)
 async def user_registration(body: UserCreateSchema, session: session_dependency):
     return await controller.user_registration(body, session)
 
@@ -25,7 +30,12 @@ async def user_login(body: LoginSchema, session: session_dependency, request: Re
 
 
 @auth_routes.post("/renew-access-token", status_code=status.HTTP_200_OK)
-async def renew_access_token(session: session_dependency, request: Request, refresh_token: str = Header(None, alias='Refresh-Token'), user_id: str = Header(None, alias="User-ID")):
+async def renew_access_token(
+    session: session_dependency,
+    request: Request,
+    refresh_token: str = Header(None, alias='Refresh-Token'),
+    user_id: str = Header(None, alias="User-ID")
+):
     if not refresh_token:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Invalid Authorization Header Layout.")
@@ -37,7 +47,11 @@ async def renew_access_token(session: session_dependency, request: Request, refr
 
 
 @auth_routes.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(session: session_dependency, user: UsersModel = Depends(allow_all), refresh_token: str = Header(None, alias="Refresh-Token")):
+async def logout(
+    session: session_dependency,
+    user: UsersModel = Depends(allow_all),
+    refresh_token: str = Header(None, alias="Refresh-Token")
+):
     if not refresh_token:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Invalid Authorization Header Layout.")
@@ -46,7 +60,11 @@ async def logout(session: session_dependency, user: UsersModel = Depends(allow_a
 
 
 @auth_routes.post("/logout-other-devices", status_code=status.HTTP_204_NO_CONTENT)
-async def logout_from_other_devices(session: session_dependency, user: UsersModel = Depends(allow_all), refresh_token: str = Header(None, alias="Refresh-Token")):
+async def logout_from_other_devices(
+    session: session_dependency,
+    user: UsersModel = Depends(allow_all),
+    refresh_token: str = Header(None, alias="Refresh-Token")
+):
     if not refresh_token:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Invalid Authorization Header Layout.")

@@ -4,57 +4,82 @@ from typing import Annotated, List
 from src.utils.db import get_db
 from src.utils.auth.authentication import allow_all
 from src.auth.models import UsersModel
-from src.payment_options.schema import PaymentOptionsCreateSchema, PaymentOptionsResponseSchema, PaymentOptionsUpdateSchema
+from src.payment_options.schema import (
+    PaymentOptionsCreateSchema,
+    PaymentOptionsResponseSchema,
+    PaymentOptionsUpdateSchema
+)
 from src.payment_options import controller
 
 payment_options_routes = APIRouter(prefix="/payment_options")
 session_dependency = Annotated[AsyncSession, Depends(get_db)]
 
 # create payment option
+
+
 @payment_options_routes.post(
     "/add",
     response_model=PaymentOptionsResponseSchema,
     status_code=status.HTTP_201_CREATED
 )
 async def create_payment_option(
-  body: PaymentOptionsCreateSchema,
-  session: session_dependency,
-  user: UsersModel = Depends(allow_all)
+    body: PaymentOptionsCreateSchema,
+    session: session_dependency,
+    user: UsersModel = Depends(allow_all)
 ):
-  return await controller.create_payment_option(body, session, user)
+    return await controller.create_payment_option(body, session, user)
 
 # get all payment options
+
+
 @payment_options_routes.get(
     "/",
     response_model=List[PaymentOptionsResponseSchema],
     status_code=status.HTTP_200_OK
-  )
+)
 async def get_all_payment_options(
-  session: session_dependency,
-  user:UsersModel = Depends(allow_all)
+    session: session_dependency,
+    user: UsersModel = Depends(allow_all)
 ):
-  return await controller.get_all_payment_options(session, user)
+    return await controller.get_all_payment_options(session, user)
 
 # get payment option by id
-@payment_options_routes.get("/{id}", response_model=PaymentOptionsResponseSchema, status_code=status.HTTP_200_OK)
+
+
+@payment_options_routes.get(
+    "/{id}",
+    response_model=PaymentOptionsResponseSchema,
+    status_code=status.HTTP_200_OK
+)
 async def get_payment_option_by_id(
-  id: str,
-  session: session_dependency,
-  user: UsersModel = Depends(allow_all)
+    id: str,
+    session: session_dependency,
+    user: UsersModel = Depends(allow_all)
 ):
-  return await controller.get_payment_option_by_id(id, session, user)
+    return await controller.get_payment_option_by_id(id, session, user)
 
 # update payment option by id
+
+
 @payment_options_routes.put("/update/{id}")
 async def update_payment_option_by_id(
-  id: str,
-  body: PaymentOptionsUpdateSchema,
-  session: session_dependency,
-  user: UsersModel = Depends(allow_all)
+    id: str,
+    body: PaymentOptionsUpdateSchema,
+    session: session_dependency,
+    user: UsersModel = Depends(allow_all)
 ):
-  return await controller.update_payment_option_by_id(id, body, session, user)
+    return await controller.update_payment_option_by_id(id, body, session, user)
 
 # delete payment option by id
-@payment_options_routes.delete("/delete/{id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_payment_option_by_id(id: str, session: session_dependency, user: UsersModel = Depends(allow_all)):
-  return await controller.delete_payment_option_by_id(id, session, user)
+
+
+@payment_options_routes.delete(
+    "/delete/{id}",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_payment_option_by_id(
+    id: str,
+    session: session_dependency,
+    user: UsersModel = Depends(allow_all)
+):
+    return await controller.delete_payment_option_by_id(id, session, user)

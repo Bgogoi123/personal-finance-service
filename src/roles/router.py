@@ -11,12 +11,16 @@ roles_routes = APIRouter(prefix="/roles")
 session_dependency = Annotated[AsyncSession, Depends(get_db)]
 
 # Public Route :: Get roles - excluding admins
-@roles_routes.get("/", response_model=List[RolesResponseSchema], status_code=status.HTTP_200_OK )
+
+
+@roles_routes.get("/", response_model=List[RolesResponseSchema], status_code=status.HTTP_200_OK)
 async def get_roles(session: session_dependency):
-  return await controller.get_roles(session)
+    return await controller.get_roles(session)
 
 # Protected Routes
 # Create role
+
+
 @roles_routes.post(
     "/add",
     response_model=RolesResponseSchema,
@@ -24,28 +28,57 @@ async def get_roles(session: session_dependency):
     status_code=status.HTTP_201_CREATED,
 )
 async def create_role(
-    body: RolesCreateSchema, 
-    session: session_dependency, 
+    body: RolesCreateSchema,
+    session: session_dependency,
     user: UsersModel = Depends(allow_admin)
-): 
-  return await controller.create_role(body, session)
+):
+    return await controller.create_role(body, session)
 
 #  Get All Roles - including admins
-@roles_routes.get("/all", response_model=List[RolesResponseSchema], status_code=status.HTTP_200_OK )
-async def get_all_roles(session: session_dependency, user: UsersModel = Depends(allow_admin)):
-  return await controller.get_all_roles(session)
+
+
+@roles_routes.get(
+    "/all",
+    response_model=List[RolesResponseSchema],
+    status_code=status.HTTP_200_OK
+)
+async def get_all_roles(session: session_dependency, _: UsersModel = Depends(allow_admin)):
+    return await controller.get_all_roles(session)
 
 # Get role by id
+
+
 @roles_routes.get("/{id}", response_model=RolesResponseSchema, status_code=status.HTTP_200_OK)
-async def get_roles_by_id(id: str, session: session_dependency, user: UsersModel = Depends(allow_admin)):
-  return await controller.get_roles_by_id(id, session)
+async def get_roles_by_id(
+    id: str,
+    session: session_dependency,
+    _: UsersModel = Depends(allow_admin)
+):
+    return await controller.get_roles_by_id(id, session)
 
 # Update role by id
-@roles_routes.put("/update/{id}", response_model=RolesResponseSchema, status_code=status.HTTP_201_CREATED)
-async def update_role_by_id(id: str, body: RolesCreateSchema, session: session_dependency, user: UsersModel = Depends(allow_admin)):
-  return await controller.update_role_by_id(id, body, session)
+
+
+@roles_routes.put(
+    "/update/{id}",
+    response_model=RolesResponseSchema,
+    status_code=status.HTTP_201_CREATED
+)
+async def update_role_by_id(
+    id: str,
+    body: RolesCreateSchema,
+    session: session_dependency,
+    _: UsersModel = Depends(allow_admin)
+):
+    return await controller.update_role_by_id(id, body, session)
 
 # Delete role by id
+
+
 @roles_routes.delete("/delete/{id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_role_by_id(id: str, session: session_dependency, user: UsersModel = Depends(allow_admin)):
-  return await controller.delete_role_by_id(id, session)
+async def delete_role_by_id(
+    id: str,
+    session: session_dependency,
+    _: UsersModel = Depends(allow_admin)
+):
+    return await controller.delete_role_by_id(id, session)
