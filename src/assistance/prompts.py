@@ -24,13 +24,11 @@ TRANSACTION_EXTRACTION_PROMPT = PromptTemplate(
 )
 
 
-SUMMARY_NARRATOR_PROMPT = PromptTemplate(
-    template="""
-      You are a monthly summary narrator for a finance management app.
+# SUMMARY_NARRATOR_PROMPT = PromptTemplate(
+#     template="""
+#       You are a monthly summary narrator for a finance management app.
 
 
-
-
-    """,
-    input_variables=["date"]
-)
+#     """,
+#     input_variables=["date"]
+# )
