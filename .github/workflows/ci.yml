@@ -28,6 +28,13 @@ jobs:
         run: flake8
 
       - name: Run tests
+        env:
+          DB_CONNECTION: ${{ secrets.DB_CONNECTION }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          ALGORITHM: HS256
+          ACCESS_TOKEN_EXPIRY_MINUTES: 120
+          REFRESH_TOKEN_EXPIRY_DAYS: 2
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: pytest
 
   deploy:
