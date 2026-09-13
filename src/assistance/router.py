@@ -63,15 +63,7 @@ async def generate_monthly_summary(
         month=current_month, year=current_year
     )
 
-    print(" ---------------------------------------------- ")
-    print(" :::: formatted_data ::::: ", formatted_data)
-    print(" ---------------------------------------------- ")
-
     narration: SummaryNarrationSchema = await summary_chain.ainvoke(formatted_data)
-
-    print(" ---------------------------------------------- ")
-    print(" :::: narration ::::: ", narration)
-    print(" ---------------------------------------------- ")
 
     return {
         "aggregated_data": aggregated_data,

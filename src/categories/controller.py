@@ -62,8 +62,6 @@ async def get_all_categories(
         session: AsyncSession,
         user: UsersModel
 ) -> List[CategoryResponseSchema]:
-    print("USER --> ", user.id, user.name)
-
     try:
 
         categories = await session.scalars(select(CategoriesModel).where(

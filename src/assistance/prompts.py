@@ -53,8 +53,8 @@ SUMMARY_NARRATOR_PROMPT = PromptTemplate(
       3. Mentions the dominant payment mode if it stands out.
       Keep the tone observational, not preachy. Do not tell the user what they "should" do.
 
-      Respond only by providing the structured output with the fields: headline, summary, top_insight.
-      Do not respond with plain text outside of these fields.
+      Respond only by providing the structured output in json format with the fields: 
+      headline, summary, top_insight. Do not respond with plain text outside of these fields.
     """,
     input_variables=[
         "month_label", "year", "total_income", "total_expense", "net_savings", "savings_rate",

@@ -15,9 +15,8 @@ from src.assistance.summary_narrator.schema import (
 )
 from src.assistance.prompts import SUMMARY_NARRATOR_PROMPT
 
-summary_llm = create_groq_llm_instance(model="meta-llama/llama-prompt-guard-2-86m", temperature=0.2)
-structured_llm = summary_llm.with_structured_output(SummaryNarrationSchema)
-# structured_llm = summary_llm.with_structured_output(SummaryNarrationSchema, method="json_mode")
+summary_llm = create_groq_llm_instance(temperature=0.2)
+structured_llm = summary_llm.with_structured_output(SummaryNarrationSchema, method="json_mode")
 
 
 async def data_aggregation(session: AsyncSession, user: UsersModel, target_date: datetime | None):
