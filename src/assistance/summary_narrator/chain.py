@@ -1,8 +1,8 @@
 from fastapi import HTTPException, status
-from sqlalchemy import case, func, select
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timezone
+from datetime import datetime
 
 from src.assistance.llm.groq import create_groq_llm_instance
 from src.categories import CategoriesModel
@@ -97,7 +97,10 @@ async def data_aggregation(session: AsyncSession, user: UsersModel, target_date:
                 TransactionsModel.created_at.label("date")
             )
             .join(CategoriesModel, TransactionsModel.category_id == CategoriesModel.id)
-            .join(PaymentOptionsModel, TransactionsModel.payment_option_id == PaymentOptionsModel.id)
+            .join(
+                PaymentOptionsModel,
+                TransactionsModel.payment_option_id == PaymentOptionsModel.id
+            )
             .where(
                 TransactionsModel.user_id == user.id,
                 TransactionsModel.created_at >= start_of_month,
@@ -138,7 +141,10 @@ async def data_aggregation(session: AsyncSession, user: UsersModel, target_date:
                 TransactionsModel.created_at.label("date"),
             )
             .join(CategoriesModel, TransactionsModel.category_id == CategoriesModel.id)
-            .join(PaymentOptionsModel, TransactionsModel.payment_option_id == PaymentOptionsModel.id)
+            .join(
+                PaymentOptionsModel,
+                TransactionsModel.payment_option_id == PaymentOptionsModel.id
+            )
             .where(
                 TransactionsModel.user_id == user.id,
                 TransactionsModel.created_at >= start_of_month,
@@ -214,10 +220,10 @@ def data_formatter(aggregated_data: AggregatedDataSchema, month: str, year: str)
 
     # Transactions: Extract transaction data into free texts.
     top_transactions_info: list[str] = []
-    for transaction in aggregated_data.top_largest_transactions:
+    for t in aggregated_data.top_largest_transactions:
         top_transactions_info.append(
-            f"- {transaction.transaction_type.title()} of ₹{transaction.amount:.2f} in {transaction.category_name.title()} "
-            f"via {transaction.payment_mode.title()} ({transaction.note or 'No Note'})"
+            f"- {t.transaction_type.title()} of ₹{t.amount:.2f} in {t.category_name.title()} "
+            f"via {t.payment_mode.title()} ({t.note or 'No Note'})"
         )
 
     top_transactions_summary = (
