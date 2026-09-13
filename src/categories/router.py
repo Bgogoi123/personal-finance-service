@@ -39,6 +39,7 @@ async def get_all_categories(
 ):
     return await controller.get_all_categories(session, user)
 
+
 # Fetch A Category by ID
 
 
