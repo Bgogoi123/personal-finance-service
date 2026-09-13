@@ -1,16 +1,19 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, timezone
 
 from src.auth.models import UsersModel
 from src.utils.db import get_db
 from src.utils.auth.authentication import allow_all
-
-# Imports for Transaction Assistant
 from src.assistance.transaction_entry.schema import UserMessageSchema
 from src.assistance.transaction_entry.graph import assistance_graph
-
-# Imports for Summary Generator
-# from src.assistance.summary_narrator.schema import SummaryGeneratorPayloadSchema
+from src.assistance.summary_narrator.schema import (
+    AggregatedDataSchema,
+    SummaryGeneratorPayloadSchema,
+    SummaryNarrationSchema,
+    SummaryResponseSchema
+)
+from src.assistance.summary_narrator.chain import data_aggregation, data_formatter, summary_chain
 
 
 assistance_routes = APIRouter(prefix="/assistance")
@@ -35,44 +38,44 @@ async def run_transaction_assistance(
     return {"response": result["final_response"]}
 
 
-# @assistance_routes.post("/generate-summary", status_code=status.HTTP_201_CREATED)
-# async def generate_monthly_summary(payload: SummaryGeneratorPayloadSchema):
-#     month = payload.date.month
-#     year = payload.date.year
-#     date = payload.date.date()
-#     print(month, year, date)
+@assistance_routes.post(
+    "/generate-summary",
+    response_model=SummaryResponseSchema,
+    status_code=status.HTTP_201_CREATED
+)
+async def generate_monthly_summary(
+    payload: SummaryGeneratorPayloadSchema,
+    session: AsyncSession = Depends(get_db),
+    user: UsersModel = Depends(allow_all)
+):
 
-#     return None
+    current_date = payload.date or datetime.now(timezone.utc())
+    current_month = current_date.strftime("%B")
+    current_year = str(current_date.year)
 
+    aggregated_data: AggregatedDataSchema = await data_aggregation(
+        session=session,
+        user=user,
+        target_date=current_date
+    )
+    formatted_data = data_formatter(
+        aggregated_data=aggregated_data,
+        month=current_month, year=current_year
+    )
 
-# -- Total Income
-# select sum(amount) as total_income from transactions where type = 'income';
+    print(" ---------------------------------------------- ")
+    print(" :::: formatted_data ::::: ", formatted_data)
+    print(" ---------------------------------------------- ")
 
-# -- Total Expense
-# select sum(amount) as total_expense from transactions where type = 'expense';
+    narration: SummaryNarrationSchema = await summary_chain.ainvoke(formatted_data)
 
+    print(" ---------------------------------------------- ")
+    print(" :::: narration ::::: ", narration)
+    print(" ---------------------------------------------- ")
 
-# -- Top 5 Largest Transactions
-# select category_id, type, amount as top_five_transactions
-# from transactions group by category_id order by
-# top_five_transactions DESC Limit 5;
+    return {
+        "aggregated_data": aggregated_data,
+        "narration": narration
+    }
 
-
-# -- Net Balance Change For each date
-# WITH signed_transactions AS (
-#     SELECT
-#         date,
-#         CASE
-#             WHEN type = 'income' THEN amount
-#             WHEN type = 'expense' THEN -amount
-#             ELSE 0
-#         END AS net_amount
-#     FROM
-#         transactions
-# )
-# SELECT
-#     date,
-#     net_amount,
-#     SUM(net_amount) OVER (ORDER BY date) AS running_net_balance
-# FROM
-#     signed_transactions;
+    # return await generate_summary(session=session, user=user, date=payload.date)
