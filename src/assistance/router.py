@@ -13,7 +13,11 @@ from src.assistance.summary_narrator.schema import (
     SummaryNarrationSchema,
     SummaryResponseSchema
 )
-from src.assistance.summary_narrator.chain import data_aggregation, data_formatter, summary_chain
+from src.assistance.summary_narrator.chain import (
+    data_aggregation,
+    data_formatter,
+    summary_chain
+)
 
 
 assistance_routes = APIRouter(prefix="/assistance")
@@ -58,6 +62,7 @@ async def generate_monthly_summary(
         user=user,
         target_date=current_date
     )
+
     formatted_data = data_formatter(
         aggregated_data=aggregated_data,
         month=current_month, year=current_year
@@ -69,5 +74,3 @@ async def generate_monthly_summary(
         "aggregated_data": aggregated_data,
         "narration": narration
     }
-
-    # return await generate_summary(session=session, user=user, date=payload.date)

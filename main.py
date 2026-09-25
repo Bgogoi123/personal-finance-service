@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from src.assistance.router import assistance_routes
 from src.auth.router import auth_routes
 from src.balance.router import balance_routes
@@ -9,6 +10,15 @@ from src.transaction.router import transaction_routes
 from src.users.router import user_routes
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
 app.include_router(auth_routes, tags=["Auth"])
 app.include_router(roles_routes, tags=["Roles"])
 app.include_router(user_routes, tags=["Users"])
